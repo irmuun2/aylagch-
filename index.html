@@ -1,0 +1,1648 @@
+<!doctype html>
+<html lang="mn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Газарзүйч аялагч</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&family=Russo+One&display=swap">
+<style>
+/* 7-р ангийн газар зүйн 3D даалгаврын тоглоом. Нэг өнгөний загвартай (тоглоомын HUD). */
+:root{
+  --panel:rgba(18,28,40,.84); --panel-line:rgba(255,255,255,.14); --ink:#f4f7fb; --muted:#a9b8c9;
+  --sun:#ffd54a; --ok:#4fd28a; --bad:#ff6b6b;
+  --f-display:"Russo One","Arial Black",system-ui,sans-serif;
+  --f-body:"Nunito",system-ui,"Segoe UI",sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden;background:#0e1620;color:var(--ink);font-family:var(--f-body);font-size:16px}
+canvas#c{position:fixed;inset:0;width:100%;height:100%;display:block;outline:none}
+[hidden]{display:none!important}
+button{font:inherit;cursor:pointer}
+kbd{display:inline-block;min-width:1.6em;padding:1px 6px;border-radius:6px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.25);border-bottom-width:3px;font-family:var(--f-body);font-weight:800;font-size:.85em;text-align:center}
+.panel{background:var(--panel);border:1px solid var(--panel-line);border-radius:14px;backdrop-filter:blur(6px)}
+
+#compass{position:fixed;top:12px;left:50%;transform:translateX(-50%);width:min(460px,40vw);height:46px;overflow:hidden;border-radius:12px;background:var(--panel);border:1px solid var(--panel-line);pointer-events:none}
+#compass .it{position:absolute;top:0;height:100%;transform:translateX(-50%);font-weight:800;color:var(--muted);font-size:13px;padding-top:4px}
+#compass .it.main{color:var(--ink);font-family:var(--f-display);font-size:19px;padding-top:9px}
+#compass .it.n{color:var(--sun)}
+#compass .tick{position:absolute;bottom:0;width:2px;height:8px;background:rgba(255,255,255,.35);transform:translateX(-50%)}
+#compass .needle{position:absolute;left:50%;top:0;bottom:0;width:2px;background:var(--bad);transform:translateX(-50%)}
+#heading{position:fixed;top:62px;left:50%;transform:translateX(-50%);font-size:12px;background:var(--panel);padding:2px 10px;border-radius:999px;pointer-events:none;font-weight:700}
+
+#quest{position:fixed;top:12px;left:12px;width:min(320px,27vw);padding:12px 14px;pointer-events:none}
+#quest .topic{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--sun);font-weight:800}
+#quest h2{font-family:var(--f-display);font-weight:400;font-size:19px;margin:2px 0 8px;line-height:1.15}
+#quest ul{list-style:none;margin:0;padding:0;display:grid;gap:5px;font-size:14px;line-height:1.35}
+#quest li{display:grid;grid-template-columns:18px 1fr;gap:6px}
+#quest li::before{content:"○";color:var(--muted)}
+#quest li.done{color:var(--muted);text-decoration:line-through}
+#quest li.done::before{content:"✓";color:var(--ok)}
+#quest li.need{color:#ffb86b}
+#quest li.need::before{content:"!";color:#ffb86b;font-weight:900}
+#quest .prog{display:flex;gap:4px;margin-top:10px}
+#quest .prog i{flex:1;height:5px;border-radius:3px;background:rgba(255,255,255,.15)}
+#quest .prog i.on{background:var(--sun)}
+
+#stats{position:fixed;top:12px;right:12px;padding:10px 14px;display:grid;gap:4px;min-width:210px;pointer-events:none;font-variant-numeric:tabular-nums}
+#stats .row{display:flex;justify-content:space-between;gap:14px;font-size:13px;color:var(--muted)}
+#stats .row b{color:var(--ink);font-size:15px}
+#stats .row.hi b{color:var(--sun)}
+#stats .lvl{font-size:13px;font-weight:800;color:var(--ink);padding-bottom:4px;border-bottom:1px solid var(--panel-line);margin-bottom:2px}
+#stats .lvl small{color:var(--sun);display:block;font-size:12px}
+#stats .xp{height:5px;border-radius:3px;background:rgba(255,255,255,.15);overflow:hidden;margin-top:4px}
+#stats .xp i{display:block;height:100%;background:var(--sun)}
+#bag{position:fixed;right:12px;bottom:12px;display:flex;gap:6px;padding:6px 8px;pointer-events:none}
+#bag span{font-size:20px;width:30px;height:30px;display:grid;place-items:center;border-radius:8px;background:rgba(255,255,255,.08)}
+
+#prompt{position:fixed;left:50%;bottom:92px;transform:translateX(-50%);padding:9px 16px;font-weight:800;pointer-events:none;white-space:nowrap}
+#keys{position:fixed;left:12px;bottom:12px;padding:8px 12px;font-size:12.5px;color:var(--muted);display:flex;gap:6px 12px;flex-wrap:wrap;max-width:min(560px,calc(100% - 280px));pointer-events:none}
+#keys span{white-space:nowrap}
+#toast{position:fixed;left:50%;top:86px;transform:translate(-50%,-8px);padding:9px 16px;font-weight:800;opacity:0;transition:.25s;pointer-events:none;color:var(--sun);max-width:90vw;text-align:center}
+#toast.on{opacity:1;transform:translate(-50%,0)}
+#cross{position:fixed;left:50%;top:50%;width:18px;height:18px;transform:translate(-50%,-50%);pointer-events:none}
+#cross::before,#cross::after{content:"";position:absolute;background:rgba(255,255,255,.85)}
+#cross::before{left:8px;top:0;width:2px;height:18px}#cross::after{top:8px;left:0;height:2px;width:18px}
+#binoc{position:fixed;inset:0;pointer-events:none;background:radial-gradient(circle at 50% 50%,transparent 0 31vmin,rgba(0,0,0,.92) 32vmin)}
+#binoc span{position:absolute;left:50%;bottom:30px;transform:translateX(-50%);font-weight:800;color:var(--sun)}
+#pause{position:fixed;left:50%;top:96px;transform:translateX(-50%);padding:10px 18px;font-size:14px;max-width:min(420px,90vw);text-align:center;font-weight:800;z-index:15;cursor:pointer;line-height:1.5}
+#pause small{display:block;color:var(--muted);font-weight:700}
+
+#dialog{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);width:min(720px,calc(100% - 24px));padding:16px 18px;display:grid;grid-template-columns:64px 1fr;gap:14px;z-index:40}
+#dialog .face{width:64px;height:64px;border-radius:50%;display:grid;place-items:center;font-family:var(--f-display);font-size:26px;color:#10202e;border:3px solid rgba(255,255,255,.7)}
+#dialog .who{font-weight:900;color:var(--sun);font-size:14px}
+#dialog .txt{font-size:17px;line-height:1.5;margin:4px 0 0}
+#dialog .txt b{color:var(--sun)}
+#dialog .opts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+#dialog .opts:empty{display:none}
+#dialog .opts button{background:rgba(255,255,255,.08);color:var(--ink);border:2px solid rgba(255,255,255,.2);border-radius:12px;padding:10px 12px;text-align:left;font-weight:700;display:flex;gap:10px;align-items:center}
+#dialog .opts button:hover:not(:disabled){border-color:var(--sun)}
+#dialog .opts button.bad{border-color:var(--bad);color:var(--bad);opacity:.7}
+#dialog .opts button.good{border-color:var(--ok);background:rgba(79,210,138,.18)}
+#dialog .opts button:disabled{cursor:default}
+#dialog .fb{margin:10px 0 0;font-weight:700}
+#dialog .fb:empty{display:none}
+#dialog .fb.bad{color:var(--bad)} #dialog .fb.good{color:var(--ok)}
+#dialog .next{justify-self:end;margin-top:10px;background:var(--sun);color:#1c1606;border:0;border-radius:10px;padding:8px 16px;font-weight:900}
+#dialog .body{min-width:0;display:grid}
+#dialog.fact{box-shadow:0 0 0 2px rgba(255,213,74,.45)}
+#dialog .ref{font-size:12px;color:var(--muted);margin-top:6px}
+#dialog .stars{color:var(--sun);font-size:22px;letter-spacing:4px}
+
+.overlay{position:fixed;inset:0;background:rgba(8,14,20,.74);display:grid;place-items:center;z-index:20;padding:12px}
+.closeBtn{background:var(--sun);color:#1c1606;border:0;border-radius:10px;padding:8px 14px;font-weight:900}
+h3.t{font-family:var(--f-display);font-weight:400;margin:0;font-size:22px}
+
+#mapWrap{display:flex;gap:14px;align-items:flex-start;max-width:100%;max-height:100%}
+#mapC{width:min(80vh,60vw);height:auto;aspect-ratio:1;border-radius:10px;border:6px solid #f3ead2;background:#f3ead2;display:block}
+#legend{padding:14px;width:250px;font-size:14px;display:grid;gap:8px}
+#legend .lg{display:grid;grid-template-columns:36px 1fr;gap:8px;align-items:center}
+#legend .sw{height:16px;border-radius:3px}
+#legend small{color:var(--muted)}
+
+.box{width:min(760px,100%);max-height:88vh;overflow:auto;padding:20px}
+.card{border:1px solid var(--panel-line);border-radius:12px;padding:12px 14px;margin-top:10px;background:rgba(255,255,255,.04)}
+.card b{color:var(--sun)}
+.card .ref{font-size:12px;color:var(--muted)}
+.card.lock{opacity:.45}
+.reg-h{margin:16px 0 0;font-weight:900;color:var(--muted);font-size:13px;letter-spacing:.06em;text-transform:uppercase}
+
+/* дэлгүүр */
+#shop .head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+#shop .wallet{font-family:var(--f-display);font-size:22px;color:var(--sun)}
+#shop .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px;margin-top:12px}
+#shop .it{border:1px solid var(--panel-line);border-radius:14px;padding:12px;display:grid;gap:6px;background:rgba(255,255,255,.04);align-content:start}
+#shop .it .ic{font-size:30px;line-height:1}
+#shop .it h4{margin:0;font-size:16px}
+#shop .it p{margin:0;font-size:13px;color:var(--muted);line-height:1.4}
+#shop .it .use{font-size:12px;color:#9fd0ff}
+#shop .it button{border:0;border-radius:10px;padding:8px 10px;font-weight:900;background:var(--sun);color:#1c1606;margin-top:4px}
+#shop .it button.own{background:rgba(79,210,138,.2);color:var(--ok)}
+#shop .it button.eq{background:rgba(255,255,255,.12);color:var(--ink)}
+#shop .it button:disabled{opacity:.45;cursor:not-allowed}
+#shop .tabs{display:flex;gap:6px;margin-top:12px}
+#shop .tabs button{border:1px solid var(--panel-line);background:none;color:var(--ink);border-radius:999px;padding:6px 14px;font-weight:800}
+#shop .tabs button[aria-pressed="true"]{background:var(--sun);color:#1c1606;border-color:var(--sun)}
+
+/* Монголын газрын зураг */
+#travel .box{width:min(1000px,100%)}
+#travel svg{width:100%;height:auto;display:block}
+#travel .pin{cursor:pointer}
+#travel .pin:hover circle.dot,#travel .pin.sel circle.dot{stroke:#fff;stroke-width:4}
+#travel .pin.lock{cursor:not-allowed;opacity:.55}
+#tInfo{display:grid;grid-template-columns:1fr auto;gap:10px 16px;align-items:center;margin-top:10px}
+#tInfo h4{margin:0;font-family:var(--f-display);font-weight:400;font-size:22px;color:var(--sun)}
+#tInfo p{margin:2px 0 0;color:var(--muted);line-height:1.45}
+#tInfo .topics{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+#tInfo .topics span{font-size:12px;border:1px solid var(--panel-line);border-radius:999px;padding:2px 9px;color:var(--ink)}
+.big{background:var(--sun);color:#1c1606;border:0;border-radius:14px;padding:12px 26px;font-weight:900;font-size:18px}
+.big:disabled{opacity:.4;cursor:not-allowed}
+.big.ghost{background:transparent;color:var(--ink);border:2px solid var(--panel-line)}
+
+#start .box,#finale .box{width:min(640px,100%);padding:26px;text-align:center;display:grid;gap:14px;justify-items:center}
+#start h1,#finale h1{font-family:var(--f-display);font-weight:400;font-size:clamp(30px,5vw,44px);margin:0;color:var(--sun);line-height:1.1}
+#start p,#finale p{margin:0;line-height:1.55;max-width:54ch}
+.ctrls{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;text-align:left;font-size:14px;align-items:center}
+.btns{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+#finale .stars{font-size:22px;color:var(--sun);font-weight:900}
+#loading{position:fixed;inset:0;display:grid;place-items:center;font-weight:800;color:var(--muted);padding:20px;text-align:center}
+:focus-visible{outline:3px solid var(--sun);outline-offset:2px}
+@media (max-width:1000px){#legend{display:none} #mapC{width:min(86vh,92vw)} #keys{display:none}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div id="loading">Ачааллаж байна…</div>
+<canvas id="c" tabindex="0"></canvas>
+
+<div id="hud" hidden>
+  <div id="compass"><div class="needle"></div></div>
+  <div id="heading"></div>
+  <div id="quest" class="panel"></div>
+  <div id="stats" class="panel">
+    <div class="lvl" id="sLvl"></div>
+    <div class="row hi"><span>Од</span><b id="sStars">0</b></div>
+    <div class="row"><span>Үнэмлэхүй өндөр</span><b id="sAlt">0 м</b></div>
+    <div class="row" id="sDistRow" hidden><span>Хуарангаас</span><b id="sDist">0 км</b></div>
+    <div class="row"><span>Нуугдмал од</span><b id="sHidden">0/6</b></div>
+  </div>
+  <div id="bag" class="panel"></div>
+  <div id="prompt" class="panel" hidden></div>
+  <div id="keys" class="panel">
+    <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> алхах</span>
+    <span><kbd>Shift</kbd> гүйх</span>
+    <span><kbd>Space</kbd> үсрэх</span>
+    <span><kbd>E</kbd> ярих</span>
+    <span><kbd>M</kbd> зураг</span>
+    <span><kbd>B</kbd> дэлгүүр</span>
+    <span><kbd>T</kbd> аялах</span>
+    <span><kbd>J</kbd> тэмдэглэл</span>
+    <span><kbd>Esc</kbd> хулганы сум</span>
+  </div>
+  <div id="toast" class="panel"></div>
+  <div id="cross" hidden></div>
+</div>
+<div id="binoc" hidden><span>Дуран · <kbd>Z</kbd> эсвэл баруун товчийг суллавал хаагдана</span></div>
+<div id="pause" class="panel" hidden>Тоглоом руу орохын тулд энд дарна уу<small>Хулганаараа эргэж харна. <kbd>Esc</kbd> дарвал хулганы сум гарч ирнэ.</small></div>
+
+<div id="dialog" class="panel" hidden>
+  <div class="face" id="dFace"></div>
+  <div class="body">
+    <div class="who" id="dWho"></div>
+    <div class="txt" id="dTxt"></div>
+    <div class="opts" id="dOpts"></div>
+    <div class="fb" id="dFb"></div>
+    <button class="next" id="dNext">Цааш <kbd>Enter</kbd></button>
+  </div>
+</div>
+
+<div id="mapView" class="overlay" hidden>
+  <div id="mapWrap">
+    <canvas id="mapC" width="640" height="640"></canvas>
+    <div id="legend" class="panel">
+      <h3 class="t" id="mapTitle">Газрын зураг</h3>
+      <div class="lg"><svg width="36" height="16"><path d="M2 12 Q18 0 34 10" stroke="#8a5a2b" stroke-width="2" fill="none"/></svg><span>Хаялбар шугам<br><small id="mapStep">Үеийн өндөр: 50 м</small></span></div>
+      <div class="lg"><svg width="36" height="16"><path d="M2 8 Q12 2 20 9 T34 7" stroke="#2f7fd0" stroke-width="3" fill="none"/></svg><span>Гол</span></div>
+      <div class="lg"><div class="sw" style="background:#5aa0e0"></div><span>Нуур</span></div>
+      <div class="lg"><svg width="36" height="16"><rect x="12" y="2" width="12" height="12" fill="#fff" stroke="#222" stroke-width="2"/></svg><span>Гэр, хуаран</span></div>
+      <div class="lg"><svg width="36" height="16"><path d="M18 2 L26 14 L10 14Z" fill="#c0392b"/></svg><span>Уулын орой</span></div>
+      <div class="lg"><svg width="36" height="16"><path d="M18 1 L25 15 H11Z" fill="#ffd54a" stroke="#222"/></svg><span>Та энд байна</span></div>
+      <div class="lg"><div class="sw" style="background:linear-gradient(90deg,#8cc56a,#c9dc84,#ead98c,#dfb46a,#c58750,#a8643a)"></div><span>Нам → Өндөр</span></div>
+      <button class="closeBtn" data-close="mapView">Хаах <kbd>M</kbd></button>
+    </div>
+  </div>
+</div>
+
+<div id="journal" class="overlay" hidden>
+  <div class="box panel">
+    <h3 class="t">Аяллын тэмдэглэл</h3>
+    <div style="color:var(--muted);font-size:14px">Даалгавар биелүүлэх бүрт сурах бичгийн нэг баримт нэмэгдэнэ.</div>
+    <div id="jList"></div>
+    <div style="margin-top:14px;text-align:right"><button class="closeBtn" data-close="journal">Хаах <kbd>J</kbd></button></div>
+  </div>
+</div>
+
+<div id="shop" class="overlay" hidden>
+  <div class="box panel">
+    <div class="head">
+      <h3 class="t">Аялагчийн дэлгүүр</h3>
+      <div class="wallet" id="shWallet"></div>
+    </div>
+    <div style="color:var(--muted);font-size:14px;margin-top:4px">Даалгавар биелүүлж, нуугдмал од олж цуглуулсан одоороо хэрэгсэл, хувцас аваарай. Хэрэгслүүд дараагийн даалгавруудад хэрэг болно.</div>
+    <div class="tabs"><button data-tab="tool" aria-pressed="true">Хэрэгсэл</button><button data-tab="outfit" aria-pressed="false">Хувцас, унаа</button></div>
+    <div class="grid" id="shGrid"></div>
+    <div style="margin-top:14px;text-align:right"><button class="closeBtn" data-close="shop">Хаах <kbd>B</kbd></button></div>
+  </div>
+</div>
+
+<div id="travel" class="overlay" hidden>
+  <div class="box panel">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+      <h3 class="t">Хаашаа аялах вэ?</h3>
+      <button class="closeBtn" id="tClose">Хаах <kbd>T</kbd></button>
+    </div>
+    <div style="color:var(--muted);font-size:14px;margin-top:2px">Монгол орны газрын зураг дээрээс аялах нутгаа сонго. Нэг нутгийн бүх даалгаврыг биелүүлбэл дараагийнх нь нээгдэнэ.</div>
+    <svg id="tMap" viewBox="0 0 680 350" role="img" aria-label="Монгол орны газрын зураг"></svg>
+    <div id="tInfo"></div>
+  </div>
+</div>
+
+<div id="start" class="overlay" hidden>
+  <div class="box panel">
+    <h1>Газарзүйч аялагч</h1>
+    <p>Монгол орны гурван нутгаар аялж, нутгийн хүмүүсийн даалгаврыг биелүүлээрэй. Цуглуулсан одоороо аяллын хэрэгсэл, хувцас авч, дүрээ хөгжүүлнэ. Даалгавар бүр 7-р ангийн газар зүйн нэг сэдэвтэй.</p>
+    <div class="ctrls">
+      <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / сум</span><span>Алхах (<kbd>Shift</kbd> гүйх, <kbd>Space</kbd> үсрэх)</span>
+      <span>Хулгана</span><span>Эргэж харах. <kbd>Esc</kbd> дарвал хулганы сум гарна.</span>
+      <span><kbd>E</kbd> · <kbd>1</kbd>–<kbd>4</kbd></span><span>Ярих, харьцах · асуултад хариулах</span>
+      <span><kbd>M</kbd> · <kbd>J</kbd></span><span>Газрын зураг · Аяллын тэмдэглэл</span>
+      <span><kbd>B</kbd> · <kbd>T</kbd></span><span>Дэлгүүр · Монголын зургаар аялах</span>
+      <span><kbd>Z</kbd></span><span>Дуран (худалдаж авсны дараа)</span>
+    </div>
+    <div class="btns">
+      <button class="big" id="bNew">Шинээр эхлэх</button>
+      <button class="big ghost" id="bCont" hidden>Үргэлжлүүлэх</button>
+    </div>
+    <div style="font-size:12px;color:var(--muted)">7-р анги · Газар зүй</div>
+  </div>
+</div>
+
+<div id="finale" class="overlay" hidden>
+  <div class="box panel">
+    <h1>Баяр хүргэе, агуу аялагч!</h1>
+    <div class="stars" id="fStars"></div>
+    <p>Та Монгол орны гурван нутагт бүх даалгаврыг биелүүлж, аяллын тэмдэглэлээ бүрэн дүүргэлээ.</p>
+    <div class="btns">
+      <button class="big" id="fJournal">Тэмдэглэл үзэх</button>
+      <button class="big ghost" id="fWalk">Үргэлжлүүлэн аялах</button>
+      <button class="big ghost" id="fRestart">Шинээр эхлэх</button>
+    </div>
+  </div>
+</div>
+
+<script src="three.min.js"></script>
+<script>window.THREE || document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"><\/script>')</script>
+<script>
+"use strict";
+const $ = s => document.querySelector(s);
+if (!window.THREE) {
+  $('#loading').textContent = 'Тоглоом ачаалагдсангүй: togloom хавтсанд three.min.js файл байхгүй, интернэт ч алга. Файлаа шалгаад дахин нээнэ үү.';
+  throw new Error('three.js missing');
+}
+
+/* ================= ТУСЛАХ ================= */
+const M_PER_U = 10;   // 1 нэгж = 10 м. Хойд зүг = −Z, зүүн зүг = +X.
+const g2 = (x, z, cx, cz, s) => { const dx = x - cx, dz = z - cz; return Math.exp(-(dx*dx + dz*dz) / (2*s*s)); };
+const smooth = (a, b, v) => { const t = Math.max(0, Math.min(1, (v - a) / (b - a))); return t*t*(3 - 2*t); };
+function segDist(px, pz, ax, az, bx, bz) {
+  const vx = bx - ax, vz = bz - az, wx = px - ax, wz = pz - az;
+  const t = Math.max(0, Math.min(1, (wx*vx + wz*vz) / (vx*vx + vz*vz)));
+  const dx = px - (ax + t*vx), dz = pz - (az + t*vz);
+  return Math.sqrt(dx*dx + dz*dz);
+}
+const polyDist = (L, x, z) => { let d = 1e9; for (let i = 0; i < L.length - 1; i++) d = Math.min(d, segDist(x, z, L[i][0], L[i][1], L[i+1][0], L[i+1][1])); return d; };
+const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const pick = a => a[Math.floor(Math.random() * a.length)];
+const round10 = v => Math.round(v / 10) * 10;
+const km = u => (u * M_PER_U / 1000).toFixed(2) + ' км';
+const fmt1 = v => String(Math.round(v * 10) / 10).replace('.', ',');
+let seed = 7;
+const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+
+/* ================= THREE ҮНДЭС ================= */
+const canvas = $('#c');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(0x9fd4f5, 170, 560);
+scene.background = new THREE.Color(0x9fd4f5);
+const camera = new THREE.PerspectiveCamera(60, 1, 0.5, 1500);
+const hemi = new THREE.HemisphereLight(0xe4f3ff, 0x6b8f4e, 0.78);
+scene.add(hemi);
+const sun = new THREE.DirectionalLight(0xfff1d6, 0.95);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -60, right: 60, top: 60, bottom: -60, near: 1, far: 340 });
+sun.shadow.camera.updateProjectionMatrix();
+sun.shadow.bias = -0.0008;
+scene.add(sun, sun.target);
+const mat = (c, o = {}) => new THREE.MeshStandardMaterial(Object.assign({ color: c, roughness: .85, flatShading: true }, o));
+const shadowAll = o => { o.traverse(m => { if (m.isMesh) { m.castShadow = true; m.receiveShadow = true; } }); return o; };
+const beacon = new THREE.Mesh(new THREE.CylinderGeometry(1.4, 1.4, 90, 16, 1, true), new THREE.MeshBasicMaterial({ color: 0xffd54a, transparent: true, opacity: .3, depthWrite: false, side: THREE.DoubleSide }));
+scene.add(beacon);
+
+/* ================= ЗҮЙЛСИЙГ БҮТЭЭХ ================= */
+let world = new THREE.Group(); scene.add(world);
+const add = o => { world.add(o); return o; };
+
+function label(text, { bg = 'rgba(18,28,40,.85)', fg = '#fff', size = 44, h = 1.6 } = {}) {
+  const cv = document.createElement('canvas'), cx = cv.getContext('2d');
+  cx.font = `800 ${size}px Nunito, sans-serif`;
+  const w = Math.ceil(cx.measureText(text).width) + size;
+  cv.width = w; cv.height = size * 1.6;
+  cx.font = `800 ${size}px Nunito, sans-serif`;
+  cx.fillStyle = bg; const r = size * .5;
+  cx.beginPath(); cx.moveTo(r, 0); cx.arcTo(w, 0, w, cv.height, r); cx.arcTo(w, cv.height, 0, cv.height, r); cx.arcTo(0, cv.height, 0, 0, r); cx.arcTo(0, 0, w, 0, r); cx.fill();
+  cx.fillStyle = fg; cx.textAlign = 'center'; cx.textBaseline = 'middle'; cx.fillText(text, w/2, cv.height/2 + 2);
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(cv), transparent: true }));
+  sp.scale.set(h * w / cv.height, h, 1);
+  return sp;
+}
+function bang() {
+  const cv = document.createElement('canvas'); cv.width = cv.height = 128;
+  const cx = cv.getContext('2d');
+  cx.fillStyle = '#ffd54a'; cx.beginPath(); cx.arc(64, 64, 56, 0, 7); cx.fill();
+  cx.lineWidth = 8; cx.strokeStyle = '#1c1606'; cx.stroke();
+  cx.fillStyle = '#1c1606'; cx.font = '900 84px Nunito, sans-serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle'; cx.fillText('!', 64, 70);
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(cv), transparent: true }));
+  sp.scale.set(1.3, 1.3, 1);
+  return sp;
+}
+function makeChar(o) {
+  const g = new THREE.Group(), body = new THREE.Group(); g.add(body);
+  const torso = new THREE.Mesh(new THREE.CylinderGeometry(o.jacket ? .55 : .42, o.deel || o.jacket ? .62 : .55, o.deel ? 1.5 : 1.15, 10), mat(o.shirt));
+  torso.position.y = o.deel ? 1.1 : 1.28; body.add(torso);
+  if (o.belt) { const b = new THREE.Mesh(new THREE.CylinderGeometry(.5, .53, .16, 10), mat(o.belt)); b.position.y = 1.15; body.add(b); }
+  if (o.jacket) { const c = new THREE.Mesh(new THREE.TorusGeometry(.42, .13, 6, 12), mat(0xf5f5f5)); c.rotation.x = Math.PI/2; c.position.y = 1.85; body.add(c); }
+  const head = new THREE.Mesh(new THREE.SphereGeometry(.44, 16, 12), mat(o.skin, { flatShading: false })); head.position.y = 2.2; body.add(head);
+  const hair = new THREE.Mesh(new THREE.SphereGeometry(.47, 16, 12, 0, Math.PI*2, 0, Math.PI*.55), mat(o.hair, { flatShading: false }));
+  hair.position.y = 2.24; hair.rotation.x = -0.3; body.add(hair);
+  if (o.tail) { const t = new THREE.Mesh(new THREE.SphereGeometry(.2, 8, 6), mat(o.hair)); t.position.set(0, 2.1, -.5); t.scale.set(1, 1.8, 1); body.add(t); }
+  if (o.hat === 'cone') { const h = new THREE.Mesh(new THREE.ConeGeometry(.5, .55, 12), mat(o.hatColor)); h.position.y = 2.72; body.add(h); const r = new THREE.Mesh(new THREE.CylinderGeometry(.56, .56, .12, 12), mat(0x3a2a1a)); r.position.y = 2.48; body.add(r); }
+  if (o.hat === 'cap') { const h = new THREE.Mesh(new THREE.SphereGeometry(.5, 12, 8, 0, Math.PI*2, 0, Math.PI*.5), mat(o.hatColor)); h.position.y = 2.32; body.add(h); const v = new THREE.Mesh(new THREE.BoxGeometry(.5, .06, .35), mat(o.hatColor)); v.position.set(0, 2.36, .5); body.add(v); }
+  if (o.hat === 'wide') { const b = new THREE.Mesh(new THREE.CylinderGeometry(.95, .95, .06, 20), mat(o.hatColor)); b.position.y = 2.45; body.add(b); const t = new THREE.Mesh(new THREE.CylinderGeometry(.42, .48, .4, 16), mat(o.hatColor)); t.position.y = 2.65; body.add(t); const r = new THREE.Mesh(new THREE.CylinderGeometry(.49, .49, .1, 16), mat(0xc0392b)); r.position.y = 2.5; body.add(r); }
+  [-.15, .15].forEach(x => { const e = new THREE.Mesh(new THREE.SphereGeometry(.06, 8, 6), mat(0x1a1a1a)); e.position.set(x, 2.22, .4); body.add(e); });
+  if (o.glasses) { const gl = new THREE.Mesh(new THREE.BoxGeometry(.56, .14, .06), mat(0x111111, { roughness: .2 })); gl.position.set(0, 2.23, .42); body.add(gl); }
+  if (o.pack) { const p = new THREE.Mesh(new THREE.BoxGeometry(.7, .8, .35), mat(o.pack)); p.position.set(0, 1.4, -.58); body.add(p); }
+  const limb = (w, l, c, x, y) => { const pv = new THREE.Group(); pv.position.set(x, y, 0); const m = new THREE.Mesh(new THREE.BoxGeometry(w, l, w), mat(c)); m.position.y = -l/2; pv.add(m); body.add(pv); return pv; };
+  const legs = [limb(.24, .72, o.pants, -.2, .74), limb(.24, .72, o.pants, .2, .74)];
+  const arms = [limb(.2, .78, o.shirt, -.62, 1.75), limb(.2, .78, o.shirt, .62, 1.75)];
+  return { g: shadowAll(g), body, legs, arms };
+}
+function animChar(c, t, amt) {
+  const s = Math.sin(t) * .7 * amt;
+  c.legs[0].rotation.x = s; c.legs[1].rotation.x = -s;
+  c.arms[0].rotation.x = -s * .8; c.arms[1].rotation.x = s * .8;
+}
+function quad(o) {   // дөрвөн хөлтэй амьтан
+  const g = new THREE.Group(), m = mat(o.color);
+  const b = new THREE.Mesh(new THREE.BoxGeometry(o.w, o.h, o.l), m); b.position.y = o.leg + o.h/2; g.add(b);
+  const neck = new THREE.Mesh(new THREE.BoxGeometry(o.w*.45, o.neck, o.w*.45), m); neck.position.set(0, o.leg + o.h + o.neck/2 - .2, o.l/2 - .1); neck.rotation.x = .35; g.add(neck);
+  const head = new THREE.Mesh(new THREE.BoxGeometry(o.w*.5, o.w*.45, o.w*.8), mat(o.head || o.color)); head.position.set(0, o.leg + o.h + o.neck - .2, o.l/2 + o.w*.3); g.add(head);
+  const legs = [];
+  [[-1, 1], [1, 1], [-1, -1], [1, -1]].forEach(([sx, sz]) => { const pv = new THREE.Group(); pv.position.set(sx * o.w*.32, o.leg, sz * o.l*.38); const l = new THREE.Mesh(new THREE.BoxGeometry(.22, o.leg, .22), mat(o.legColor || o.color)); l.position.y = -o.leg/2; pv.add(l); g.add(pv); legs.push(pv); });
+  if (o.humps) [-.25, .25].forEach(z => { const hp = new THREE.Mesh(new THREE.SphereGeometry(o.w*.42, 8, 6), m); hp.position.set(0, o.leg + o.h, z * o.l); g.add(hp); });
+  if (o.antler) { const am = mat(0xd8c3a0); [-1, 1].forEach(s => { const a = new THREE.Mesh(new THREE.BoxGeometry(.08, .9, .08), am); a.position.set(s*.25, o.leg + o.h + o.neck + .3, o.l/2 + .1); a.rotation.z = s * .5; g.add(a); const t = new THREE.Mesh(o.antler === 'palm' ? new THREE.BoxGeometry(.6, .1, .35) : new THREE.BoxGeometry(.08, .5, .08), am); t.position.set(s*.55, o.leg + o.h + o.neck + .7, o.l/2 + .1); t.rotation.z = s * (o.antler === 'palm' ? .4 : -.4); g.add(t); }); }
+  g.userData.legs = legs;
+  return shadowAll(g);
+}
+const makeSheep = () => quad({ color: 0xf7f5ef, head: 0x2b2723, legColor: 0x2b2723, w: 1.2, h: .9, l: 1.6, leg: .55, neck: .4 });
+const makeCamel = () => quad({ color: 0xc69c6d, w: 1.1, h: 1.1, l: 2.4, leg: 1.6, neck: 1.4, humps: true });
+const makeDeer = () => quad({ color: 0x9a6b3f, w: .8, h: .8, l: 1.7, leg: 1.1, neck: .8, antler: 'branch' });
+const makeMoose = () => quad({ color: 0x4a3426, w: 1.3, h: 1.3, l: 2.4, leg: 1.6, neck: .7, antler: 'palm' });
+const makeBear = () => quad({ color: 0x5b3a22, w: 1.5, h: 1.3, l: 2.2, leg: .8, neck: .3 });
+const makeHorse = () => quad({ color: 0x7a4b2a, head: 0x6a3f22, legColor: 0x3a2618, w: .9, h: 1, l: 2.2, leg: 1.2, neck: 1 });
+function walkQuad(g, t, amt) { (g.userData.legs || []).forEach((l, i) => l.rotation.x = Math.sin(t + (i === 0 || i === 3 ? 0 : Math.PI)) * .5 * amt); }
+
+function makeGer(x, z, s = 1, door = 0xe0702a) {
+  const g = new THREE.Group();
+  const wall = new THREE.Mesh(new THREE.CylinderGeometry(3.2*s, 3.2*s, 2.2*s, 20), mat(0xf6f1e4)); wall.position.y = 1.1*s; g.add(wall);
+  const roof = new THREE.Mesh(new THREE.ConeGeometry(3.5*s, 1.6*s, 20), mat(0xece4d0)); roof.position.y = 3*s; g.add(roof);
+  const band = new THREE.Mesh(new THREE.CylinderGeometry(3.23*s, 3.23*s, .18*s, 20), mat(0x2b5fa8)); band.position.y = 1.7*s; g.add(band);
+  const d = new THREE.Mesh(new THREE.BoxGeometry(1.1*s, 1.6*s, .3), mat(door)); d.position.set(0, .8*s, 3.15*s); g.add(d);
+  const top = new THREE.Mesh(new THREE.CylinderGeometry(.5*s, .5*s, .25*s, 12), mat(0xc0392b)); top.position.y = 3.85*s; g.add(top);
+  g.position.set(x, groundY(x, z), z); g.rotation.y = Math.PI;
+  add(shadowAll(g));
+}
+function makeUrts(x, z) {
+  const g = new THREE.Group();
+  const c = new THREE.Mesh(new THREE.ConeGeometry(2.6, 5, 10, 1, true), mat(0xb59a74, { side: THREE.DoubleSide })); c.position.y = 2.5; g.add(c);
+  for (let i = 0; i < 6; i++) { const p = new THREE.Mesh(new THREE.CylinderGeometry(.06, .06, 1.4, 4), mat(0x6b4a2b)); const a = i / 6 * Math.PI * 2; p.position.set(Math.cos(a)*.2, 5.4, Math.sin(a)*.2); p.rotation.set(Math.sin(a)*.3, 0, Math.cos(a)*.3); g.add(p); }
+  g.position.set(x, groundY(x, z), z); add(shadowAll(g));
+}
+function makeFlag(x, z, color, text) {
+  const g = new THREE.Group();
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(.08, .08, 4.2, 6), mat(0xdddddd)); pole.position.y = 2.1; g.add(pole);
+  const fg = new THREE.BufferGeometry(); fg.setAttribute('position', new THREE.Float32BufferAttribute([0,4.1,0, 0,3.0,0, 1.7,3.55,0], 3)); fg.computeVertexNormals();
+  g.add(new THREE.Mesh(fg, mat(color, { side: THREE.DoubleSide })));
+  const l = label(text, { h: 1.1 }); l.position.y = 5; g.add(l);
+  g.position.set(x, groundY(x, z), z); add(shadowAll(g));
+}
+function makeSign(f) {
+  const g = new THREE.Group();
+  const post = new THREE.Mesh(new THREE.BoxGeometry(.25, 2.4, .25), mat(0x7a5230)); post.position.y = 1.2; g.add(post);
+  const board = new THREE.Mesh(new THREE.BoxGeometry(1.8, 1.1, .15), mat(0xb7864f)); board.position.y = 2.3; g.add(board);
+  f.q = label('?', { bg: '#ffd54a', fg: '#1c1606', size: 60, h: 1.4 }); f.q.position.y = 3.8; g.add(f.q);
+  f.lbl = label(f.name, { bg: 'rgba(79,210,138,.95)', fg: '#06210f', h: 1.2 }); f.lbl.position.y = 3.7; f.lbl.visible = false; g.add(f.lbl);
+  g.position.set(f.x, groundY(f.x, f.z), f.z); add(shadowAll(g));
+}
+function starMesh() {
+  const s = new THREE.Shape();
+  for (let i = 0; i < 10; i++) { const r = i % 2 ? .45 : 1, a = i / 10 * Math.PI * 2 - Math.PI / 2; s[i ? 'lineTo' : 'moveTo'](Math.cos(a) * r, Math.sin(a) * r); }
+  const g = new THREE.ExtrudeGeometry(s, { depth: .25, bevelEnabled: false }); g.center();
+  return new THREE.Mesh(g, mat(0xffd54a, { emissive: 0x9a6a00, emissiveIntensity: .6, metalness: .4, roughness: .3 }));
+}
+function instTrees(spots, { crown = 0x2f6b3a, h = 5.5, r = 1.8 } = {}) {
+  const c = new THREE.InstancedMesh(new THREE.ConeGeometry(r, h, 7), mat(crown), spots.length);
+  const t = new THREE.InstancedMesh(new THREE.CylinderGeometry(.3, .4, 1.6, 6), mat(0x6b4a2b), spots.length);
+  const o = new THREE.Object3D();
+  spots.forEach(([x, y, z, s], i) => {
+    o.position.set(x, y + .7*s, z); o.scale.set(s, s, s); o.rotation.y = i; o.updateMatrix(); t.setMatrixAt(i, o.matrix);
+    o.position.y = y + (h*.55 + .8)*s; o.updateMatrix(); c.setMatrixAt(i, o.matrix);
+  });
+  c.castShadow = t.castShadow = true; add(c); add(t);
+}
+function instRocks(spots, color = 0x8f8a82) {
+  const m = new THREE.InstancedMesh(new THREE.DodecahedronGeometry(1, 0), mat(color), spots.length), o = new THREE.Object3D();
+  spots.forEach(([x, y, z, s], i) => { o.position.set(x, y + s*.3, z); o.scale.set(s, s*.7, s); o.rotation.set(i, i*2, i*.5); o.updateMatrix(); m.setMatrixAt(i, o.matrix); });
+  m.castShadow = m.receiveShadow = true; add(m);
+}
+
+/* ================= ГАЗАР НУТГИЙН ХӨДӨЛГҮҮР ================= */
+const SIZE = 680, SEG = 170, CELL = SIZE / SEG;
+let W = null;   // одоогийн нутаг
+function groundY(x, z) {
+  const HG = W.HG, fx = (x + SIZE/2) / CELL, fz = (z + SIZE/2) / CELL;
+  const ix = Math.max(0, Math.min(SEG - 1, Math.floor(fx))), iz = Math.max(0, Math.min(SEG - 1, Math.floor(fz)));
+  const tx = Math.min(1, Math.max(0, fx - ix)), tz = Math.min(1, Math.max(0, fz - iz)), R = SEG + 1;
+  const a = HG[iz*R + ix], b = HG[iz*R + ix + 1], c = HG[(iz+1)*R + ix], d = HG[(iz+1)*R + ix + 1];
+  return (a*(1-tx) + b*tx)*(1-tz) + (c*(1-tx) + d*tx)*tz;
+}
+const altOf = y => Math.round(W.def.baseAlt + y * M_PER_U);
+function lakeAt(x, z) { for (const l of W.def.lakes) if (Math.hypot(x - l.x, z - l.z) < l.r) return l; return null; }
+const cA = new THREE.Color(), cB = new THREE.Color();
+const mix = (a, b, t) => cA.set(a).lerp(cB.set(b), Math.max(0, Math.min(1, t)));
+
+function buildTerrain(def) {
+  const HG = new Float32Array((SEG + 1) * (SEG + 1));
+  def.lakes.forEach(l => l.y = def.H(l.x, l.z) + l.off);
+  const tg = new THREE.PlaneGeometry(SIZE, SIZE, SEG, SEG); tg.rotateX(-Math.PI / 2);
+  const pos = tg.attributes.position, cols = new Float32Array(pos.count * 3);
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i), z = pos.getZ(i), h = def.H(x, z);
+    pos.setY(i, h);
+    HG[Math.round((z + SIZE/2) / CELL) * (SEG + 1) + Math.round((x + SIZE/2) / CELL)] = h;
+    const c = def.color(x, z, h), j = (Math.sin(x*12.9898 + z*78.233) * 43758.5453 % 1) * .045;
+    cols[i*3] = c.r + j; cols[i*3+1] = c.g + j; cols[i*3+2] = c.b + j*.5;
+  }
+  tg.setAttribute('color', new THREE.BufferAttribute(cols, 3));
+  tg.computeVertexNormals();
+  const m = new THREE.Mesh(tg, new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 1 }));
+  m.receiveShadow = true; add(m);
+  return HG;
+}
+function buildWater(def) {
+  def.lakes.forEach(l => {
+    const m = new THREE.Mesh(new THREE.CircleGeometry(l.disc, 72), mat(0x3d8fd6, { transparent: true, opacity: .86, roughness: .25, metalness: .1, flatShading: false }));
+    m.rotation.x = -Math.PI / 2; m.position.set(l.x, l.y, l.z); m.receiveShadow = true; add(m);
+  });
+  (def.rivers || []).forEach(R => {
+    const pts = [];
+    for (let i = 0; i < R.length - 1; i++) { const [ax, az] = R[i], [bx, bz] = R[i+1], n = Math.ceil(Math.hypot(bx-ax, bz-az) / 2); for (let k = 0; k < n; k++) pts.push([ax + (bx-ax)*k/n, az + (bz-az)*k/n]); }
+    pts.push(R[R.length - 1]);
+    const v = [], idx = [];
+    pts.forEach((p, i) => {
+      const q = pts[Math.min(i + 1, pts.length - 1)], o = pts[Math.max(i - 1, 0)];
+      let tx = q[0] - o[0], tz = q[1] - o[1]; const l = Math.hypot(tx, tz) || 1; tx /= l; tz /= l;
+      const w = 1.6 + 1.6 * (i / pts.length), lk = lakeAt(p[0], p[1]);
+      const y = Math.max(groundY(p[0], p[1]) + .45, lk ? lk.y + .02 : -1e9);
+      v.push(p[0] - tz*w, y, p[1] + tx*w, p[0] + tz*w, y, p[1] - tx*w);
+      if (i < pts.length - 1) { const a = i*2; idx.push(a, a+1, a+2, a+1, a+3, a+2); }
+    });
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(v, 3)); g.setIndex(idx); g.computeVertexNormals();
+    add(new THREE.Mesh(g, mat(0x4aa3e8, { transparent: true, opacity: .9, roughness: .3, side: THREE.DoubleSide, flatShading: false, polygonOffset: true, polygonOffsetFactor: -2 })));
+  });
+}
+function findPeak(cx, cz, r) { let P = { x: cx, z: cz, y: -1e9 }; for (let x = cx - r; x <= cx + r; x++) for (let z = cz - r; z <= cz + r; z++) { const y = groundY(x, z); if (y > P.y) P = { x, z, y }; } return P; }
+
+// хүмүүс
+function npc(id, name, short, color, look, x, z) {
+  const c = makeChar(look);
+  c.g.position.set(x, groundY(x, z), z);
+  const cp = W.def.camp; c.g.rotation.y = Math.atan2(cp.x - x, cp.z + 12 - z);
+  const mark = bang(); mark.position.y = 3.6; c.g.add(mark);
+  add(c.g);
+  W.npc[id] = { id, name, short, color, c, mark, x, z };
+  W.inter.push({ pos: () => c.g.position, r: 4, label: () => 'Ярих: ' + name, act: () => W.talk[id]() });
+}
+const who = id => { const n = W.npc[id]; return { name: n.name, short: n.short, color: n.color }; };
+const NARR = { name: 'Аяллын тэмдэглэл', short: '★', color: '#ffd54a' };
+
+/* ================= НУТГУУД ================= */
+const LOOK = {
+  dorj: { shirt: 0x2b6cb0, belt: 0xf2c94c, pants: 0x3b2f2f, skin: 0xd9a67e, hair: 0x1f1a17, hat: 'cone', hatColor: 0xc0392b },
+  saraa: { shirt: 0x7d4cdb, pants: 0x2d3142, skin: 0xf0c7a3, hair: 0x3a2318, tail: true },
+  temuulen: { shirt: 0xe67e22, pants: 0x34495e, skin: 0xd9a67e, hair: 0x111111, hat: 'cap', hatColor: 0x2c3e50, pack: 0x27ae60 },
+  trader: { shirt: 0xc0392b, belt: 0xf1c40f, pants: 0x2c3e50, skin: 0xe8b88f, hair: 0x2a1c12, deel: true, hat: 'cone', hatColor: 0x8e44ad },
+  oyun: { shirt: 0x1abc9c, pants: 0x34495e, skin: 0xf0c7a3, hair: 0x1b1b1b, tail: true, hat: 'wide', hatColor: 0xf3e2b3 },
+  ganbat: { shirt: 0x8d6e63, pants: 0x3e2723, skin: 0xd9a67e, hair: 0x333333, hat: 'cap', hatColor: 0xf39c12, pack: 0x795548 },
+  naraa: { shirt: 0xd35400, belt: 0xf1c40f, pants: 0x4e342e, skin: 0xd9a67e, hair: 0x1f1a17, deel: true, tail: true },
+  nomin: { shirt: 0x2e7d32, pants: 0x33691e, skin: 0xf0c7a3, hair: 0x4a2c1a, tail: true, hat: 'cap', hatColor: 0x1b5e20 },
+};
+function trader(x, z) { npc('trader', 'Худалдаачин Ану', 'А', '#ff9f80', LOOK.trader, x, z); W.talk.trader = async () => { await say(who('trader'), pick(['Сайн уу! Аялалд хэрэгтэй бүхэн манайд бий. Одоороо худалдаж аваарай.', 'Шинэ хэрэгсэл үзэх үү? Дараагийн даалгаварт хэрэг болно шүү.'])); openPanel('shop'); }; }
+
+const REGIONS = {};
+
+/* ---------- 1. ХАНГАЙН ХӨНДИЙ ---------- */
+REGIONS.hangai = (() => {
+  const RIVER = [[0,-190],[12,-160],[30,-125],[48,-90],[60,-50],[72,-10],[88,35],[108,75],[130,108],[150,130],[162,140]];
+  const RAVINE = [[-185,-10],[-115,70]];
+  const SPRING = { x: 0, z: -190 }, BASE = { x: -40, z: -168 }, PEN = { x: 16, z: 22 };
+  const inflow = { x: RIVER[RIVER.length - 3][0] + 5, z: RIVER[RIVER.length - 3][1] };
+  const FORMS = [
+    { id: 'tolgod', name: 'Толгод', x: 128, z: -128, hint: 'Хаялбарууд оройг нь битүү тойрсон жижиг өндөрлөг. Бага хэмжээний хэлбэр.' },
+    { id: 'jalga', name: 'Жалга', x: -150, z: 30, hint: 'Хоёр эгц хажуутай, нарийн гүн хонхор. Гуу, толгодын адил бага хэмжээний хэлбэр.' },
+    { id: 'khundii', name: 'Голын хөндий', x: 52, z: -58, hint: 'Хоёр өндөрлөгийн хоорондох нам газар, дундуур нь гол урсдаг.' },
+    { id: 'tal', name: 'Тал', x: -150, z: 170, hint: 'Өргөн уудам тэгш газар. Хуурай газрын 3/5-ыг эзэлдэг.' },
+  ];
+  const def = {
+    id: 'hangai', name: 'Хангайн хөндий', lon: 100.4, lat: 47.3, baseAlt: 1200, sky: 0x9fd4f5, ground: 0x6b8f4e,
+    desc: 'Уул, гол, нуур бүхий өргөн хөндий. Эндээс аяллаа эхэлнэ.',
+    topics: ['Зүг чиг', 'Масштаб', 'Гол', 'Өндөр', 'Гадаргын хэлбэр', 'Хаялбар'],
+    camp: { x: 0, z: 10 }, spawn: { x: 0, z: 24 }, bootsAlt: 1600, contour: 5,
+    lakes: [{ x: 172, z: 150, off: 6.6, r: 60, disc: 58 }], rivers: [RIVER],
+    stars: [[-60,40],[200,-30],[-230,-140],[90,210],[-260,230],[40,-250]],
+    H(x, z) {
+      let h = 1.6*Math.sin(x*0.021 + 0.5)*Math.cos(z*0.017) + 0.9*Math.sin(x*0.047 + 1.3)*Math.sin(z*0.039 + 0.7) + 0.35*Math.sin(x*0.11)*Math.cos(z*0.13);
+      h += Math.max(0, -z - 60) * 0.035;
+      h += 46*g2(x,z,-40,-262,58) + 26*g2(x,z,70,-300,50) + 30*g2(x,z,-170,-250,55) + 16*g2(x,z,-110,-305,40) + 18*g2(x,z,150,-280,45);
+      h += 7*g2(x,z,98,-104,16) + 8*g2(x,z,130,-130,18) + 6*g2(x,z,142,-74,15) + 5*g2(x,z,72,-138,14);
+      h += 7*g2(x,z,-150,25,48);
+      const w = Math.min(1, g2(x,z,-150,170,62)*1.6); h = h*(1 - w) + 0.8*w;
+      const rd = segDist(x, z, RAVINE[0][0], RAVINE[0][1], RAVINE[1][0], RAVINE[1][1]); h -= 5.5*Math.exp(-rd*rd/(2*3.2*3.2));
+      h -= 9*g2(x,z,172,150,30);
+      const d = polyDist(RIVER, x, z); h -= 2.2*Math.exp(-d*d/32);
+      return h;
+    },
+    color(x, z, h) {
+      const L = this.lakes[0];
+      if (h < L.y + .5 && Math.hypot(x - L.x, z - L.z) < 70) return cA.set(0xcdbb86);
+      if (polyDist(RIVER, x, z) < 3.5) return cA.set(0xb8a479);
+      if (h > 46) return cA.set(0xf3f5f8);
+      if (h > 36) return mix(0x8d8273, 0xf3f5f8, (h - 36) / 10);
+      if (h > 24) return mix(0x5c7f45, 0x8d8273, (h - 24) / 12);
+      if (h > 10) return mix(0x86a957, 0x5c7f45, (h - 10) / 14);
+      return mix(0x93bd5e, 0xc9c27a, g2(x, z, -150, 170, 70) * 1.4);
+    },
+    quests: [
+      { title: 'Төөрсөн хонь', topic: 'I бүлэг · Зүг чиг', fact: { t: 'Зүг чиг', ref: '7-р анги, I бүлэг', x: 'Үндсэн 4 зүг: <b>хойд (Х)</b>, <b>өмнөд (Ө)</b>, <b>зүүн (З)</b>, <b>баруун (Б)</b>. Тэдгээрийн хооронд завсрын 4 зүг байна: зүүн хойд (ЗХ), зүүн өмнөд (ЗӨ), баруун өмнөд (БӨ), баруун хойд (БХ).' } },
+      { title: 'Булгийг хайж ол', topic: '1.4 · Масштаб', fact: { t: 'Масштаб', ref: 'СБ 12–14-р тал', x: '<b>Масштаб</b> нь зураг дээрх 1 см бодит газар дээр хэдэн см болохыг заана. <b>1 : 50 000</b> масштабтай зурагт 1 см = 500 м, тиймээс 4 см = 2 км.' } },
+      { title: 'Голын аялал', topic: '5.3 · Хуурай газрын ус', fact: { t: 'Гол', ref: 'СБ 51–55-р тал', x: '<b>Гол</b> бол газрын хонхор хэсгийг даган байнга урсаж буй ус. Горхи, булаг, мөнх цаснаас <b>эх</b> авч, өөр гол, нуур, далай тэнгист <b>цутгадаг</b>. Хоёр голын системийг заагласан хамгийн өндөр цэгүүдийг дайруулан татсан шугамыг <b>ус хагалбар</b> гэнэ.' } },
+      { title: 'Уул хэр өндөр вэ?', topic: '3.2 · Гадаргын өндөр', fact: { t: 'Үнэмлэхүй ба харьцангуй өндөр', ref: 'СБ 23–25-р тал', x: '<b>Үнэмлэхүй өндөр</b> бол тухайн газрын өндрийг далайн түвшнээс хэмжсэн хэмжээ. <b>Харьцангуй өндөр</b> бол өөр газрынхтай харьцуулж хэмжсэн хэмжээ, жишээ нь уулын бэлээс орой хүртэл. Газрын зураг дээр зөвхөн үнэмлэхүй өндрийг бичдэг.' } },
+      { title: 'Гадаргын хэлбэрүүд', topic: '3.3 · Гадаргын хэлбэр', fact: { t: 'Гадаргын хэлбэр', ref: 'СБ 26–27-р тал', x: 'Хэмжээгээр нь гурав ангилна. <b>Том:</b> уул, тал. <b>Дунд:</b> хотгор, нам газар, тэгш өндөрлөг. <b>Бага:</b> гуу, жалга, толгод, голын хөндий. Хуурай газрын 3/5-ыг тал газар эзэлдэг.' } },
+      { title: 'Газрын зураг унших', topic: '1.3 · Таних тэмдэг', fact: { t: 'Газрын зураг унших', ref: 'СБ 9–12, 23-р тал', x: '<b>Хаялбар</b> бол газрын гадаргын өндрийг үзүүлэх хүрэн бор шугам, түүний бүх цэг ижил өндөрт байна. Хаялбарууд <b>шигүү</b> бол гадарга эгц, <b>сийрэг</b> бол налуу. Нуур зэрэг том талбайг <b>хэлбэрийг нь хадгалж</b> дүрсэлнэ.' } },
+    ],
+  };
+  let PEAK, sheep;
+  def.init = () => {
+    makeGer(-8, 4); makeGer(7, 2, .9); makeGer(-2, -8, 1.1, 0x2b5fa8);
+    for (let i = 0; i < 16; i++) { const a = i / 16 * Math.PI * 2, x = PEN.x + Math.cos(a)*5, z = PEN.z + Math.sin(a)*5; const p = new THREE.Mesh(new THREE.BoxGeometry(.2, 1.2, .2), mat(0x7a5230)); p.position.set(x, groundY(x, z) + .6, z); add(p); }
+    const sy = groundY(SPRING.x, SPRING.z);
+    const w = new THREE.Mesh(new THREE.CircleGeometry(2.6, 20), mat(0x6cc3ff, { roughness: .2, flatShading: false })); w.rotation.x = -Math.PI/2; w.position.set(SPRING.x, sy + .5, SPRING.z); add(w);
+    for (let i = 0; i < 10; i++) { const a = i/10*Math.PI*2; const r = new THREE.Mesh(new THREE.DodecahedronGeometry(.6, 0), mat(0x9a948a)); r.position.set(SPRING.x + Math.cos(a)*3, sy + .4, SPRING.z + Math.sin(a)*3); add(r); }
+    const sl = label('Булаг', { h: 1.2 }); sl.position.set(SPRING.x, sy + 3.5, SPRING.z); add(sl);
+    { const g = new THREE.Group(); const p = new THREE.Mesh(new THREE.CylinderGeometry(.12, .12, 3, 6), mat(0xffffff)); p.position.y = 1.5; g.add(p); const b = new THREE.Mesh(new THREE.SphereGeometry(.45, 10, 8), mat(0xff6b3d)); b.position.y = 3.1; g.add(b); g.position.set(inflow.x, groundY(inflow.x, inflow.z), inflow.z); add(g); }
+    PEAK = findPeak(-40, -262, 40);
+    makeFlag(BASE.x, BASE.z, 0xffd54a, 'Уулын бэл'); makeFlag(PEAK.x, PEAK.z, 0xe74c3c, 'Орой');
+    FORMS.forEach(makeSign);
+    const spots = []; for (let t = 0; t < 6000 && spots.length < 340; t++) { const x = -330 + rnd()*660, z = -330 + rnd()*230, h = groundY(x, z); if (h > 13 && h < 36 && polyDist(RIVER, x, z) > 8 && Math.hypot(x - PEAK.x, z - PEAK.z) > 14) spots.push([x, h, z, .8 + rnd()*.7]); }
+    instTrees(spots);
+    const rocks = []; for (let t = 0; t < 3000 && rocks.length < 120; t++) { const x = -330 + rnd()*660, z = -330 + rnd()*660, h = groundY(x, z); if ((h > 20 || rnd() < .08) && polyDist(RIVER, x, z) > 6 && Math.hypot(x, z - 10) > 25) rocks.push([x, h, z, .5 + rnd()*1.6]); }
+    instRocks(rocks);
+    npc('dorj', 'Малчин Дорж', 'Д', '#7fc8ff', LOOK.dorj, 5, 14);
+    npc('saraa', 'Эрдэмтэн Сараа', 'С', '#ffb3d1', LOOK.saraa, -7, 13);
+    npc('temuulen', 'Уулчин Тэмүүлэн', 'Т', '#ffd28a', LOOK.temuulen, BASE.x + 3, BASE.z + 2);
+    trader(-13, 18);
+    const R = reg();
+    sheep = [[98,-104],[132,-136],[142,-74]].map(([x, z], i) => { const g = makeSheep(); g.position.set(x, groundY(x, z), z); g.rotation.y = i * 2; add(g); return { g, home: { x, z }, state: 'lost' }; });
+    if (R.q > 0) homeSheep(true); else if (R.ph === 'return' || R.ph === 'find') { R.d.sheep = 0; R.ph = 'find'; }
+    FORMS.forEach(f => { if ((R.d.forms || {})[f.id] || R.q > 4) { f.q.visible = false; f.lbl.visible = true; } });
+
+    W.inter.push(
+      { pos: () => SPRING, r: 6, label: () => R.q === 2 && R.ph === 'eh' ? 'Голын эхээс усны дээж авах' : null, act: sampleSpring },
+      { pos: () => inflow, r: 9, label: () => R.q === 2 && R.ph === 'follow' ? 'Голын цутгалыг шинжлэх' : null, act: sampleInflow },
+      { pos: () => BASE, r: 5, label: () => R.q === 3 && R.ph === 'base' ? 'Бэлийн өндрийг тэмдэглэх' : null, act: measureBase },
+      { pos: () => PEAK, r: 6, label: () => R.q === 3 && R.ph === 'peak' ? 'Оройн өндрийг тэмдэглэх' : null, act: measurePeak },
+      ...FORMS.map(f => ({ pos: () => f, r: 6, label: () => R.q === 4 && R.ph === 'forms' && !R.d.forms[f.id] ? 'Гадаргын хэлбэрийг нэрлэх' : null, act: () => identify(f) })),
+    );
+    W.tick = (dt, t) => {
+      sheep.forEach((s, i) => {
+        const g = s.g; let tx, tz, sp;
+        if (s.state === 'lost') {
+          g.position.y = groundY(g.position.x, g.position.z);
+          if (R.q === 0 && R.ph === 'find' && Math.hypot(P.x - g.position.x, P.z - g.position.z) < 4) {
+            s.state = 'follow'; R.d.sheep = (R.d.sheep || 0) + 1; toast(`Хонь олдлоо! (${R.d.sheep}/3)`);
+            if (R.d.sheep >= 3) set({ ph: 'return' }); else renderQuest();
+          }
+          return;
+        }
+        if (s.state === 'follow') { const a = P.face + Math.PI + (i - 1) * .6; tx = P.x + Math.sin(a) * (3 + i); tz = P.z + Math.cos(a) * (3 + i); sp = 30; }
+        else { tx = s.home.x + Math.sin(t * .3 + i) * 1.5; tz = s.home.z + Math.cos(t * .3 + i) * 1.5; sp = 3; }
+        const dx = tx - g.position.x, dz = tz - g.position.z, d = Math.hypot(dx, dz);
+        if (d > .3) { const m = Math.min(d, sp * dt * Math.min(1, d / 2)); g.position.x += dx / d * m; g.position.z += dz / d * m; g.rotation.y = Math.atan2(dx, dz); }
+        walkQuad(g, t * 10, d > .5 ? 1 : 0);
+        g.position.y = groundY(g.position.x, g.position.z);
+      });
+      FORMS.forEach(f => { if (R.d.forms && R.d.forms[f.id] && f.q.visible) { f.q.visible = false; f.lbl.visible = true; } });
+      if (!busy && R.q === 1 && R.ph === 'go' && Math.hypot(P.x - SPRING.x, P.z - SPRING.z) < 7) run(reachSpring);
+    };
+    W.marks = () => [
+      { x: -2, z: 4, t: 'ger' }, { x: -2, z: 26, t: 'text', s: 'Хуаран' },
+      { x: SPRING.x, z: SPRING.z, t: 'spring', s: 'Булаг' }, { x: PEAK.x, z: PEAK.z, t: 'peak', s: (R.d.peak || round10(altOf(PEAK.y))) + ' м' },
+      { x: 172, z: 150, t: 'text', s: 'Нуур', c: '#0d3a66' },
+      ...(R.q >= 4 ? FORMS.map(f => ({ x: f.x, z: f.z, t: 'text', s: (R.d.forms || {})[f.id] || R.q > 4 ? f.name : '?', c: '#6b3d00' })) : []),
+      ...(R.q === 5 ? [{ x: PEAK.x + 2, z: PEAK.z + 50, t: 'ab', s: 'А' }, { x: -112, z: 118, t: 'ab', s: 'Б' }] : []),
+    ];
+    W.distFrom = () => R.q === 1 ? def.camp : null;
+    W.mapOpened = () => { if (R.q === 5 && R.ph === 'map') run(mapQuiz); };
+  };
+  function homeSheep(snap) { sheep.forEach((s, i) => { s.state = 'home'; s.home = { x: PEN.x + Math.cos(i*2.1)*2, z: PEN.z + Math.sin(i*2.1)*2 }; if (snap) s.g.position.set(s.home.x, groundY(s.home.x, s.home.z), s.home.z); }); }
+  def.objective = R => {
+    const { q, ph, d } = R, L = [], a = (t, done, need) => L.push({ t, done, need });
+    if (q === 0) { a('Малчин Доржтой ярих', ph !== 'talk'); a(`Зүүн хойд (ЗХ) зүгээс 3 хонь олох (${d.sheep || 0}/3)`, ph === 'return'); a('Хонинуудыг Дорж руу хүргэх', false); }
+    else if (q === 1) { a('Эрдэмтэн Сараатай ярих', ph !== 'talk'); a('Хойд (Х) зүгт 2 км явж булгийг олох', false); }
+    else if (q === 2) { if (!S.owned.jar) a('Дэлгүүрээс «Дээжний сав» авах (B)', false, true); a('Голын эх (булаг) дээр усны дээж авах', ph === 'follow'); a('Голыг даган уруудаж, цутгах газрыг олох', false); }
+    else if (q === 3) { a('Уулчин Тэмүүлэнтэй уулын бэлд уулзах', ph !== 'talk'); if (!S.owned.boots) a('Дэлгүүрээс «Уулын гутал» авах (B)', false, true); a('Шар туг (бэл) дээр өндрийг тэмдэглэх' + (d.base ? ` · ${d.base} м` : ''), !!d.base); a('Оргилын улаан туг дээр өндрийг тэмдэглэх', !!d.peak); }
+    else if (q === 4) { a('Хуаранд Сараатай ярих', ph !== 'talk'); FORMS.forEach(f => a((d.forms || {})[f.id] ? `«?» самбар: ${f.name}` : '«?» самбарын гадаргын хэлбэрийг нэрлэх', !!(d.forms || {})[f.id])); a('Сараад мэдэгдэх', false); }
+    else if (q === 5) { a('Хуаранд Сараатай ярих', ph !== 'talk'); a('M дарж газрын зургаа нээж унших', false); }
+    return L;
+  };
+  def.needsTalk = (id, R) => {
+    const { q, ph } = R;
+    if (id === 'dorj') return q === 0 && (ph === 'talk' || ph === 'return');
+    if (id === 'saraa') return (q === 1 && ph === 'talk') || (q === 4 && (ph === 'talk' || ph === 'return')) || (q === 5 && ph === 'talk');
+    if (id === 'temuulen') return q === 3 && ph === 'talk';
+    return false;
+  };
+  def.target = R => {
+    if (R.q === 2) return R.ph === 'eh' ? SPRING : inflow;
+    if (R.q === 3 && R.ph === 'base') return BASE;
+    if (R.q === 3 && R.ph === 'peak') return PEAK;
+    return null;   // зүг чиг, масштабын даалгаварт туяа өгөхгүй
+  };
+  // яриа
+  def.talk = {
+    async dorj() {
+      const R = reg(), d = who('dorj');
+      if (R.q === 0 && R.ph === 'talk') {
+        await say(d, 'Сайн уу, аялагч аа! Би малчин Дорж байна. Өчигдрийн салхинд <b>гурван хонь</b> маань бэлчээрээсээ төөрчихлөө.');
+        await say(d, 'Дэлгэцийн дээд хэсэгт <b>луужин</b> бий. Үндсэн 4 зүг: <b>Х</b> хойд, <b>Ө</b> өмнөд, <b>З</b> зүүн, <b>Б</b> баруун. Тэдгээрийн хооронд завсрын 4 зүг бий.');
+        await quiz(d, 'Хонинууд <b>зүүн хойд</b> зүгийн толгод руу явсан. Луужин дээр зүүн хойд зүгийг юу гэж товчилсон бэ?', ['ЗХ', 'БХ', 'ЗӨ', 'БӨ'], 'Зүүн нь <b>З</b>, хойд нь <b>Х</b>. Хоёуланг нь нийлүүлээрэй.');
+        await say(d, 'Тийм! Хулганаараа эргэж, луужингийн <b>ЗХ</b> тэмдэг улаан зураасан дээр ирэхэд тэр зүг рүү алхаарай. Хонинуудын дэргэд очвол тэд чамайг дагана.');
+        set({ ph: 'find' });
+      } else if (R.q === 0 && R.ph === 'return') {
+        homeSheep(false);
+        await say(d, 'Хонинууд маань ирлээ! Их баярлалаа. Чи <b>зүг чиг</b>-ээ сайн мэддэг юм байна.');
+        await say(d, 'Даалгавар биелүүлэх бүрт <b>од</b> авна. Одоороо Ану худалдаачнаас аяллын хэрэгсэл авч болно. Одоо эрдэмтэн <b>Сараа</b>-тай ярь.');
+        await finishQuest(0);
+      } else await say(d, pick(['Хонинууд маань одоо тайван бэлчиж байна. Баярлалаа!', 'Манай гэрийн хаалга <b>өмнө</b> зүг рүү харсан.', 'Төөрвөл луужингаа хар. Хуаран нь голын баруун талд, нуураас <b>баруун хойд</b> зүгт бий.']));
+    },
+    async saraa() {
+      const R = reg(), s = who('saraa');
+      if (R.q === 1 && R.ph === 'talk') {
+        await say(s, 'Сайн уу! Би газарзүйч эрдэмтэн <b>Сараа</b>. Энэ нутгийн голын эх болох <b>булгийг</b> судлах гэсэн юм.');
+        await say(s, 'Миний газрын зургийн масштаб <b>1 : 50 000</b>. Зураг дээр булаг манай хуарангаас яг <b>хойд</b> зүгт <b>4 см</b> зайтай байна.');
+        await quiz(s, '<b>1 : 50 000</b> масштабтай зурагт <b>1 см</b> бодит газар дээр хэдэн метр вэ?', ['500 м', '50 м', '5000 м', '5 м'], '50 000 см-ийг 100-д хуваавал метр болно.');
+        await quiz(s, 'Тэгвэл зураг дээрх <b>4 см</b> бодит газар дээр хэд вэ?', ['2 км', '20 км', '200 м', '4 км'], '4 × 500 м = ? Метрийг 1000-д хуваавал км болно.', '4 × 500 м = 2000 м = 2 км.');
+        await say(s, '<b>Хойд (Х)</b> зүг рүү <b>2 км</b> яваарай. Баруун дээд буланд хуарангаас хэр хол явсан нь харагдана.');
+        set({ ph: 'go' });
+      } else if (R.q === 4 && R.ph === 'talk') {
+        await say(s, 'Энэ хөндийд олон янзын <b>гадаргын хэлбэр</b> бий. Би 4 газарт <b>?</b> тэмдэгтэй самбар босгосон.');
+        await say(s, 'Самбар бүрийн дэргэд очиж <b>E</b> дараад тэр газрын гадаргын хэлбэрийг нэрлээрэй. <b>M</b> дарвал самбаруудын байрлал харагдана.');
+        R.d.forms = {}; set({ ph: 'forms' });
+      } else if (R.q === 4 && R.ph === 'return') {
+        await say(s, 'Гайхалтай! Та толгод, жалга, голын хөндий, тал гэсэн 4 хэлбэрийг таньлаа.');
+        await quiz(s, 'Гадаргын хэлбэрийг <b>хэмжээгээр</b> нь ангилдаг. Аль нь <b>бага хэмжээний</b> хэлбэр вэ?', ['Жалга', 'Уул', 'Тал', 'Тэгш өндөрлөг'], 'Уул, тал нь <b>том</b> хэмжээний хэлбэр. Тэгш өндөрлөг нь <b>дунд</b> хэмжээнийх.');
+        await finishQuest(4);
+      } else if (R.q === 5 && R.ph === 'talk') {
+        await say(s, 'Сүүлийн даалгавар! Аялагч хүн <b>газрын зураг</b> уншиж чаддаг байх ёстой.');
+        await say(s, '<b>M</b> товч дарж газрын зургаа нээгээрэй. Би зураг дээр <b>А</b>, <b>Б</b> гэсэн хоёр налууг тэмдэглэсэн.');
+        set({ ph: 'map' });
+      } else await say(s, pick(['<b>M</b> товч дарвал газрын зураг нээгдэнэ. Хүрэн бор шугамууд нь хаялбар.', '<b>J</b> товч дарж аяллын тэмдэглэлээ үзээрэй.', 'Хуурай газрын <b>3/5</b>-ыг тал газар эзэлдэг.']));
+    },
+    async temuulen() {
+      const R = reg(), t = who('temuulen');
+      if (R.q === 3 && R.ph === 'talk') {
+        await say(t, 'Сайн уу! Би уулчин <b>Тэмүүлэн</b>. Энэ уул хэр өндөр вэ гэдгийг хамт хэмжье.');
+        await quiz(t, 'Тухайн газрын өндрийг <b>далайн түвшнээс</b> хэмжсэн хэмжээг юу гэх вэ?', ['Үнэмлэхүй өндөр', 'Харьцангуй өндөр', 'Үеийн өндөр', 'Хаялбар шугам'], 'Далайн түвшин бол бүх газрын хувьд нэг ижил эхлэл (0 м).');
+        await say(t, 'Баруун дээд буланд таны зогсож буй газрын <b>үнэмлэхүй өндөр</b> харагдана. Эхлээд энэ <b>шар туг</b> дээр <b>E</b> дарж бэлийн өндрийг тэмдэглэ. Дараа нь оргил дээрх <b>улаан туг</b> хүртэл авир.');
+        if (!S.owned.boots) await say(t, '<b>1600 м</b>-ээс дээш эгц энгэр гулгамтгай. <b>Уулын гутал</b> хэрэгтэй болно. Хуаран дахь Ану худалдаачнаас, эсвэл <b>B</b> дарж авч болно.');
+        set({ ph: 'base' });
+      } else await say(t, pick(['Харьцангуй өндрийг уулын <b>бэлээс орой</b> хүртэл хэмждэг.', 'Газрын зураг дээр зөвхөн <b>үнэмлэхүй өндрийг</b> бичдэг.']));
+    },
+  };
+  async function reachSpring() {
+    await say(NARR, `Булгийг оллоо! Хуарангаас шулуунаар <b>${km(Math.hypot(P.x - def.camp.x, P.z - def.camp.z))}</b> явжээ.`);
+    await finishQuest(1);
+    await say(NARR, 'Энэ булгаас жижиг гол урсан гарч байна. Гол нь <b>горхи, булаг, мөнх цас</b>-наас эх авч урсдаг. Булгийн дэргэд <b>E</b> дарж голын эхээс усны дээж аваарай.');
+    set({ ph: 'eh' });
+  }
+  async function sampleSpring() {
+    if (!(await need('jar', 'Усны дээж хийх <b>Дээжний сав</b> хэрэгтэй.'))) return;
+    await say(NARR, 'Дээжний саванд голын <b>эх</b>-ийн ус хийлээ. Одоо голыг даган уруудаж, гол хаана <b>цутгаж</b> байгааг олоорой.');
+    set({ ph: 'follow' });
+  }
+  async function sampleInflow() {
+    await quiz(NARR, 'Гол энд дуусаж байна. Энэ гол хаана <b>цутгаж</b> байна вэ?', ['Нуурт', 'Далайд', 'Өөр голд', 'Газар доор'], 'Эргэн тойрноо хар. Голын ус хаашаа орж байна?');
+    await say(NARR, 'Голын эх нь хойд талын уулсын бэлд байсан. Уулын <b>хяр</b>-ыг даган нэг голын системийг нөгөөгөөс нь заагласан шугам оршдог.');
+    await quiz(NARR, 'Хоёр голын системийг заагласан хамгийн өндөр цэгүүдийг дайруулан татсан шугамыг юу гэх вэ?', ['Ус хагалбар', 'Ус цуглуулах талбай', 'Хүрхрээ', 'Усны горим'], 'Энэ шугам усыг хоёр тийш нь «хагалж» хуваадаг.');
+    await finishQuest(2);
+    await say(NARR, 'Уулчин <b>Тэмүүлэн</b> хойд уулын бэлд таныг хүлээж байна. Шар туяаг дагаарай.');
+  }
+  async function measureBase() {
+    const a = round10(altOf(groundY(BASE.x, BASE.z)));
+    reg().d.base = a;
+    await say(NARR, `Уулын <b>бэл</b>-ийн үнэмлэхүй өндөр: <b>${a} м</b>. Тэмдэглэлээ! Одоо оргил руу авираарай.`);
+    set({ ph: 'peak' });
+  }
+  async function measurePeak() {
+    const R = reg(), a = round10(altOf(PEAK.y)), b = R.d.base, r = a - b;
+    R.d.peak = a;
+    await say(NARR, `Уулын <b>орой</b>-н үнэмлэхүй өндөр: <b>${a} м</b>. Эндээс бүх хөндий харагдаж байна!`);
+    await quiz(who('temuulen'), `Бэл <b>${b} м</b>, орой <b>${a} м</b>. Уулын <b>харьцангуй өндөр</b> хэд вэ?`, [r + ' м', a + ' м', b + ' м', (r + 100) + ' м'], 'Харьцангуй өндөр = орой − бэл.', `${a} − ${b} = ${r} м.`);
+    await finishQuest(3);
+    await say(NARR, 'Эрдэмтэн <b>Сараа</b> хуаранд шинэ даалгавартай хүлээж байна.');
+  }
+  async function identify(f) {
+    const R = reg(), others = shuffle(['Толгод', 'Жалга', 'Голын хөндий', 'Тал', 'Уул', 'Хотгор'].filter(n => n !== f.name)).slice(0, 3);
+    await quiz(NARR, 'Эргэн тойрноо ажигла. Энэ ямар <b>гадаргын хэлбэр</b> вэ?', [f.name, ...others], f.hint);
+    R.d.forms[f.id] = true;
+    const all = FORMS.every(x => R.d.forms[x.id]);
+    set({ ph: all ? 'return' : 'forms' });
+    if (all) toast('Бүх самбарыг таньлаа! Сараа руу буц.');
+  }
+  async function mapQuiz() {
+    const s = who('saraa');
+    await quiz(s, 'Зураг дээрх хүрэн бор, муруй шугамууд бол <b>хаялбар</b>. Хаялбар шугам юуг үзүүлдэг вэ?', ['Газрын гадаргын өндрийг', 'Голын урсгалыг', 'Замыг', 'Аймгийн хилийг'], 'Нэг хаялбарын бүх цэг ижил өндөрт байдаг.');
+    await quiz(s, 'Зураг дээрх <b>А</b> ба <b>Б</b> хоёр налууг харьцуул. Аль нь илүү <b>эгц</b> вэ?', ['А: хаялбарууд шигүү', 'Б: хаялбарууд сийрэг', 'Хоёулаа адилхан', 'Хаялбараар мэдэх боломжгүй'], 'Хаялбарууд ойр ойрхон байвал гадарга эгц.');
+    await quiz(s, 'Тайлбарт «Үеийн өндөр: 50 м» гэж бичсэн байна. <b>Үеийн өндөр</b> гэж юу вэ?', ['Зэргэлдээ хоёр хаялбарын өндрийн зөрүү', 'Уулын бэлээс орой хүртэлх өндөр', 'Далайн түвшнээс хэмжсэн өндөр', 'Зураг дээрх 1 см-ийн бодит зай'], 'Хоёр хаялбар шугамын хоорондох өндрийн ялгааг хэлдэг.');
+    await quiz(s, 'Энэ зураг дээр <b>нуур</b>-ыг хэрхэн дүрсэлсэн бэ?', ['Хөх талбайгаар, хэлбэрийг нь хадгалж', 'Хөх зураасаар', 'Жижиг тэмдэгтээр', 'Хүрэн шугамаар'], 'Том талбай эзэлдэг объектыг хэлбэрийг нь хадгалж дүрсэлдэг.');
+    await finishQuest(5);
+  }
+  return def;
+})();
+
+/* ---------- 2. ГОВЬ ---------- */
+REGIONS.gobi = (() => {
+  const ST = { therm: { x: 16, z: 4 }, anem: { x: 22, z: -2 }, vane: { x: 10, z: -4 }, baro: { x: 20, z: 12 } };
+  const ROCKS = [
+    { id: 'borjin', name: 'Боржин чулуу', x: -150, z: -112, color: 0xc9a0a0, q: 'Ягаавтар саарал, маш олон эрдсийн нэгдэл, ус нэвчдэггүй, бат бөх чулуу. Үүнийг юунд хэрэглэдэг вэ?', a: ['Хөшөө, шат, зам хийхэд', 'Цементийн түүхий эдэд', 'Дээвэр хийхэд', 'Шил хийхэд'], hint: 'Бат бөх, хүйтэнд тэсвэртэй чулууг удаан эдэлгээтэй зүйлд хэрэглэдэг.' },
+    { id: 'shokhoi', name: 'Шохойн чулуу', x: -70, z: 150, color: 0xeee6d2, q: 'Энэ цагаавтар чулуу голдуу <b>кальцит</b>-аас тогтоно. Кальцит далайн амьтдын бүрхүүлээс үүсдэг. Юунд хэрэглэдэг вэ?', a: ['Цементийн гол түүхий эдэд', 'Хөшөө хийхэд', 'Дээвэр хийхэд', 'Зүлгүүр хийхэд'], hint: 'Барилгын нэгэн чухал материалын гол түүхий эд.' },
+    { id: 'zanar', name: 'Занар', x: -210, z: 40, color: 0x4f5560, q: 'Энэ хар саарал чулууны талстууд <b>хавтгай хавтан</b> хэлбэртэй. Энэ ямар төрлийн чулуулаг вэ?', a: ['Хувирмал', 'Тунамал', 'Магмын', 'Лаав'], hint: 'Өндөр температур, даралтаар хайлахгүйгээр хувирсан чулуулаг.' },
+  ];
+  const def = {
+    id: 'gobi', name: 'Говь', lon: 104.2, lat: 43.6, baseAlt: 1100, sky: 0xcfe3f2, ground: 0xb59a6a,
+    desc: 'Элсэн манхан, хад чулуу бүхий хуурай нутаг. Цаг агаар, чулуулаг, цөлийн амьдралыг судална.',
+    topics: ['Цаг агаар', 'Эрдэс чулуулаг', 'Цөлийн ургамал, амьтан'],
+    camp: { x: 0, z: 10 }, spawn: { x: -2, z: 26 }, contour: 5, lakes: [],
+    stars: [[180,-150],[250,120],[-170,-140],[-120,250],[60,-260],[-260,-20]],
+    H(x, z) {
+      let h = 1.2*Math.sin(x*.018 + 1)*Math.cos(z*.015) + .6*Math.sin(x*.05)*Math.sin(z*.043 + 1);
+      const dm = smooth(50, 130, x), dn = Math.sin(x*.09 + Math.sin(z*.025)*2.2);
+      h += dm * 5.5 * dn * dn * (.7 + .3*Math.sin(z*.05));
+      h += 14*g2(x,z,-150,-112,22) + 9*g2(x,z,-185,-80,15) + 11*g2(x,z,-110,-150,16) + 6*g2(x,z,-210,40,14) + 3*g2(x,z,-70,150,12);
+      h += 24*g2(x,z,-40,-310,70) + 16*g2(x,z,130,-320,60);
+      h -= 2.5*g2(x,z,40,170,50);
+      return h;
+    },
+    color(x, z, h) {
+      if (h > 12 && x < -60) return mix(0x9e7b62, 0x7d6352, (h - 12) / 8);
+      if (h > 9) return mix(0xb08d6a, 0x8a6f5c, (h - 9) / 15);
+      const dune = smooth(50, 130, x);
+      return mix(0xc9ad7c, 0xe6c487, dune).lerp(cB.set(0xd8c79a), g2(x, z, 40, 170, 50) * .8);
+    },
+    quests: [
+      { title: 'Цаг уурын станц', topic: '4.1 · Цаг агаар', fact: { t: 'Цаг агаар', ref: 'СБ 31–37-р тал', x: '<b>Цаг агаар</b> бол тухайн газар орны богино хугацаан дахь агаар мандлын төлөв байдал. Температурыг <b>термометр</b>, даралтыг <b>барометр</b>, салхины хурдыг <b>анемометр</b>-ээр хэмжиж, чиглэлийг <b>флюгер</b> заана. <b>Салхи</b> бол их даралттай хэсгээс бага даралттай хэсэг рүү чиглэсэн агаарын хэвтээ хөдөлгөөн.' } },
+      { title: 'Чулуулгийн дээж', topic: '3.4 · Эрдэс чулуулаг', fact: { t: 'Эрдэс чулуулаг', ref: 'СБ 27–29-р тал', x: 'Чулуулгийг гарал үүслээр нь <b>тунамал, магмын, хувирмал</b> гэж гурав ангилна. <b>Боржин чулуу</b> ус нэвчдэггүй, бат бөх тул хөшөө, шат, зам хийдэг. <b>Шохойн чулуу</b> цементийн гол түүхий эд. <b>Занар</b> хувирмал чулуулаг, дээвэр хийдэг. Газрын гадаргад гарсан магмыг <b>лаав</b> гэнэ.' } },
+      { title: 'Төөрсөн тэмээ', topic: '6.2–6.3 · Цөлийн ургамал, амьтан', fact: { t: 'Цөлийн ургамал, амьтан', ref: 'СБ 69, 71-р тал', x: 'Цөлд хур тунадас <b>250 мм-ээс бага</b> ордог. Цөлийн ургамал <b>навчгүй, өргөстэй</b> тул чийгээ алддаггүй, үндэс нь урт. <b>Тэмээ</b> ус ховор нөхцөлд удаан амьдардаг. Үржил шимт газар цөл болж өөрчлөгдөхийг <b>цөлжилт</b> гэнэ.' } },
+    ],
+  };
+  let camels;
+  def.init = () => {
+    makeGer(-8, 4); makeGer(6, 0, .9, 0x2b5fa8); makeGer(-4, -10);
+    // цаг уурын станц
+    const pole = (x, z, h) => { const p = new THREE.Mesh(new THREE.CylinderGeometry(.08, .08, h, 6), mat(0xdddddd)); p.position.set(x, groundY(x, z) + h/2, z); add(p); return groundY(x, z) + h; };
+    { const y = groundY(ST.therm.x, ST.therm.z); const g = new THREE.Group(); const box = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.1, 1.1), mat(0xffffff)); box.position.y = 1.9; g.add(box); [[-.6,-.45],[.6,-.45],[-.6,.45],[.6,.45]].forEach(([a, b]) => { const l = new THREE.Mesh(new THREE.BoxGeometry(.1, 1.4, .1), mat(0xffffff)); l.position.set(a, .7, b); g.add(l); }); g.position.set(ST.therm.x, y, ST.therm.z); add(shadowAll(g)); const lb = label('Термометрийн хайрцаг', { h: .9 }); lb.position.set(ST.therm.x, y + 3.4, ST.therm.z); add(lb); }
+    { const top = pole(ST.anem.x, ST.anem.z, 4); const g = new THREE.Group(); for (let i = 0; i < 3; i++) { const a = i / 3 * Math.PI * 2; const arm = new THREE.Mesh(new THREE.BoxGeometry(1, .05, .05), mat(0x999999)); arm.position.set(Math.cos(a)*.5, 0, Math.sin(a)*.5); arm.rotation.y = -a; g.add(arm); const cup = new THREE.Mesh(new THREE.SphereGeometry(.18, 8, 6, 0, Math.PI), mat(0xe74c3c)); cup.position.set(Math.cos(a), 0, Math.sin(a)); cup.rotation.y = -a; g.add(cup); } g.position.set(ST.anem.x, top, ST.anem.z); add(g); W.anem = g; const lb = label('Анемометр', { h: .9 }); lb.position.set(ST.anem.x, top + 1.2, ST.anem.z); add(lb); }
+    { const top = pole(ST.vane.x, ST.vane.z, 4); const g = new THREE.Group(); const ar = new THREE.Mesh(new THREE.BoxGeometry(.08, .08, 1.8), mat(0x333333)); g.add(ar); const tip = new THREE.Mesh(new THREE.ConeGeometry(.18, .4, 6), mat(0x333333)); tip.rotation.x = Math.PI/2; tip.position.z = 1; g.add(tip); const fin = new THREE.Mesh(new THREE.BoxGeometry(.05, .5, .5), mat(0xe74c3c)); fin.position.z = -.8; g.add(fin); g.position.set(ST.vane.x, top, ST.vane.z); add(g); W.vane = g; const lb = label('Флюгер', { h: .9 }); lb.position.set(ST.vane.x, top + 1.2, ST.vane.z); add(lb); }
+    { const y = groundY(ST.baro.x, ST.baro.z); const g = new THREE.Group(); const hut = new THREE.Mesh(new THREE.BoxGeometry(2.4, 2.2, 2.4), mat(0xd9d2c3)); hut.position.y = 1.1; g.add(hut); const rf = new THREE.Mesh(new THREE.ConeGeometry(2, 1, 4), mat(0x8e5a3a)); rf.position.y = 2.7; rf.rotation.y = Math.PI/4; g.add(rf); const dial = new THREE.Mesh(new THREE.CylinderGeometry(.45, .45, .08, 20), mat(0xf5f0e0)); dial.rotation.x = Math.PI/2; dial.position.set(0, 1.4, 1.22); g.add(dial); g.position.set(ST.baro.x, y, ST.baro.z); add(shadowAll(g)); const lb = label('Барометр', { h: .9 }); lb.position.set(ST.baro.x, y + 4, ST.baro.z); add(lb); }
+    // хадан цохио, чулуулаг
+    ROCKS.forEach(r => {
+      const y0 = groundY(r.x, r.z);
+      for (let i = 0; i < 9; i++) {
+        const a = i / 9 * Math.PI * 2, d = 1.5 + (i % 3);
+        const m = r.id === 'zanar' ? new THREE.Mesh(new THREE.BoxGeometry(2.4, .35, 1.6), mat(r.color)) : r.id === 'shokhoi' ? new THREE.Mesh(new THREE.BoxGeometry(1.8, 1.2, 1.6), mat(r.color)) : new THREE.Mesh(new THREE.DodecahedronGeometry(1.3, 0), mat(r.color));
+        const x = r.x + Math.cos(a)*d, z = r.z + Math.sin(a)*d;
+        m.position.set(x, groundY(x, z) + (r.id === 'zanar' ? .2 + (i % 3) * .35 : .6), z); m.rotation.y = a; add(shadowAll(m));
+      }
+      r.mark = label('Чулуулгийн цохио', { h: 1 }); r.mark.position.set(r.x, y0 + 4.5, r.z); add(r.mark);
+    });
+    // заг, бут
+    const sh = []; for (let t = 0; t < 4000 && sh.length < 260; t++) { const x = -330 + rnd()*660, z = -330 + rnd()*660, h = groundY(x, z); if (h < 8 && Math.hypot(x, z - 10) > 30) sh.push([x, h, z, .5 + rnd()*.8]); }
+    const bm = new THREE.InstancedMesh(new THREE.DodecahedronGeometry(1, 0), mat(0x7c8a5a), sh.length), o = new THREE.Object3D();
+    sh.forEach(([x, h, z, s], i) => { o.position.set(x, h + .4*s, z); o.scale.set(s*1.2, s*.7, s*1.2); o.rotation.y = i; o.updateMatrix(); bm.setMatrixAt(i, o.matrix); });
+    bm.castShadow = true; add(bm);
+    const rk = []; for (let t = 0; t < 3000 && rk.length < 140; t++) { const x = -330 + rnd()*660, z = -330 + rnd()*660, h = groundY(x, z); if ((h > 7 && x < -60) || rnd() < .05) rk.push([x, h, z, .5 + rnd()*1.8]); }
+    instRocks(rk, 0x9e7b62);
+    npc('oyun', 'Цаг уурч Оюун', 'О', '#7ff0d2', LOOK.oyun, 13, 9);
+    npc('ganbat', 'Геологич Ганбат', 'Г', '#e0c09a', LOOK.ganbat, -10, 14);
+    npc('naraa', 'Тэмээчин Нараа', 'Н', '#ffbf80', LOOK.naraa, 4, 18);
+    trader(-15, 6);
+    const R = reg();
+    camels = [[205,-70],[240,95]].map(([x, z], i) => { const g = makeCamel(); g.position.set(x, groundY(x, z), z); g.rotation.y = i * 2.5; add(g); return { g, state: 'lost', home: { x: 14 + i * 4, z: 24 } }; });
+    if (R.q > 2) homeCamels(true); else if (R.q === 2 && (R.ph === 'find' || R.ph === 'return')) { R.d.camels = 0; R.ph = 'find'; }
+    R.d.inst = R.d.inst || {}; R.d.rocks = R.d.rocks || {};
+    const instAct = (id, nm) => ({ pos: () => ST[id], r: 4.5, label: () => R.q === 0 && R.ph === 'inst' && !R.d.inst[id] ? nm + ' судлах' : null, act: () => studyInst(id) });
+    W.inter.push(instAct('anem', 'Анемометр'), instAct('vane', 'Флюгер'), instAct('baro', 'Барометр'), instAct('therm', 'Термометрээр температур'));
+    ROCKS.forEach(r => W.inter.push({ pos: () => r, r: 7, label: () => R.q === 1 && R.ph === 'rocks' && !R.d.rocks[r.id] ? 'Чулуулгийн дээж цуглуулах' : null, act: () => takeRock(r) }));
+    W.tick = (dt, t) => {
+      if (W.anem) W.anem.rotation.y += dt * 6;
+      if (W.vane) W.vane.rotation.y = .8 + Math.sin(t * .4) * .25;
+      camels.forEach((c, i) => {
+        const g = c.g; let tx, tz, sp;
+        if (c.state === 'lost') { g.position.y = groundY(g.position.x, g.position.z);
+          if (R.q === 2 && R.ph === 'find' && Math.hypot(P.x - g.position.x, P.z - g.position.z) < 6) { c.state = 'follow'; R.d.camels = (R.d.camels || 0) + 1; toast(`Тэмээ олдлоо! (${R.d.camels}/2)`); if (R.d.camels >= 2) set({ ph: 'return' }); else renderQuest(); }
+          return; }
+        if (c.state === 'follow') { const a = P.face + Math.PI + (i - .5) * .7; tx = P.x + Math.sin(a) * (5 + i*2); tz = P.z + Math.cos(a) * (5 + i*2); sp = 32; }
+        else { tx = c.home.x + Math.sin(t*.2 + i) * 2; tz = c.home.z + Math.cos(t*.2 + i) * 2; sp = 2; }
+        const dx = tx - g.position.x, dz = tz - g.position.z, d = Math.hypot(dx, dz);
+        if (d > .4) { const m = Math.min(d, sp * dt * Math.min(1, d / 3)); g.position.x += dx/d*m; g.position.z += dz/d*m; g.rotation.y = Math.atan2(dx, dz); }
+        walkQuad(g, t * 7, d > .6 ? 1 : 0);
+        g.position.y = groundY(g.position.x, g.position.z);
+      });
+    };
+    W.marks = () => [{ x: -2, z: 0, t: 'ger' }, { x: -2, z: 26, t: 'text', s: 'Хуаран' }, { x: 18, z: 4, t: 'text', s: 'Цаг уурын станц', c: '#0d3a66' },
+      ...(R.q >= 1 ? ROCKS.map(r => ({ x: r.x, z: r.z + 12, t: 'text', s: R.d.rocks[r.id] ? r.name : 'Чулуулаг ?', c: '#6b3d00' })) : []),
+      { x: 190, z: 0, t: 'text', s: 'Элсэн манхан', c: '#6b4a00' }];
+    W.distFrom = () => null;
+  };
+  function homeCamels(snap) { camels.forEach(c => { c.state = 'home'; if (snap) c.g.position.set(c.home.x, groundY(c.home.x, c.home.z), c.home.z); }); }
+  def.objective = R => {
+    const { q, ph, d } = R, L = [], a = (t, done, need) => L.push({ t, done, need });
+    if (q === 0) { a('Цаг уурч Оюунтай ярих', ph !== 'talk'); ['anem', 'vane', 'baro'].forEach(k => a({ anem: 'Анемометр', vane: 'Флюгер', baro: 'Барометр' }[k] + ' судлах', !!(d.inst || {})[k])); if (!S.owned.thermo) a('Дэлгүүрээс «Термометр» авах (B)', false, true); a('Термометрээр агаарын температур хэмжих', !!(d.inst || {}).therm); a('Оюунд мэдэгдэх', false); }
+    else if (q === 1) { a('Геологич Ганбаттай ярих', ph !== 'talk'); if (!S.owned.hammer) a('Дэлгүүрээс «Геологийн алх» авах (B)', false, true); a(`Баруун зүгийн хадан цохионоос 3 дээж цуглуулах (${Object.keys(d.rocks || {}).length}/3)`, ph === 'return'); a('Ганбатад дээжээ үзүүлэх', false); }
+    else if (q === 2) { a('Тэмээчин Нараатай ярих', ph !== 'talk'); a(`Зүүн (З) зүгийн элсэн манхнаас 2 тэмээ олох (${d.camels || 0}/2)`, ph === 'return'); a('Тэмээдийг Нараа руу хүргэх', false); }
+    return L;
+  };
+  def.needsTalk = (id, R) => {
+    if (id === 'oyun') return R.q === 0 && (R.ph === 'talk' || R.ph === 'return');
+    if (id === 'ganbat') return R.q === 1 && (R.ph === 'talk' || R.ph === 'return');
+    if (id === 'naraa') return R.q === 2 && (R.ph === 'talk' || R.ph === 'return');
+    return false;
+  };
+  def.target = R => {
+    if (R.q === 0 && R.ph === 'inst') { for (const k of ['anem', 'vane', 'baro', 'therm']) if (!R.d.inst[k] && (k !== 'therm' || S.owned.thermo)) return ST[k]; }
+    if (R.q === 1 && R.ph === 'rocks' && S.owned.hammer) { for (const r of ROCKS) if (!R.d.rocks[r.id]) return r; }
+    return null;
+  };
+  def.talk = {
+    async oyun() {
+      const R = reg(), o = who('oyun');
+      if (R.q === 0 && R.ph === 'talk') {
+        await say(o, 'Сайн уу, говьд тавтай морил! Би цаг уурч <b>Оюун</b>. Манай станц өдөр бүр агаар мандлыг ажигладаг.');
+        await quiz(o, 'Тухайн газар орны <b>богино хугацаан</b> дахь агаар мандлын төлөв байдлыг юу гэх вэ?', ['Цаг агаар', 'Уур амьсгал', 'Агаарын масс', 'Фронт'], 'Өнөөдөр, маргааш гэх мэт богино хугацааны төлөвийг хэлнэ.');
+        await say(o, 'Станцын <b>анемометр, флюгер, барометр</b>-ийг судалж, юуг хэмждэгийг нь олоорой. Дараа нь <b>термометр</b>-ээр агаарын температурыг хэмжинэ.' + (S.owned.thermo ? '' : ' Танд термометр алга байна. <b>B</b> дарж дэлгүүрээс аваарай.'));
+        set({ ph: 'inst' });
+      } else if (R.q === 0 && R.ph === 'return') {
+        await say(o, `Сайн хэмжлээ! Өнөөдрийн агаарын температур <b>+${R.d.temp}°C</b>. Барометр одоо ч их даралт заасаар байна.`);
+        await quiz(o, 'Салхи аль чиглэлд үлээдэг вэ?', ['Их даралтаас бага даралт руу', 'Бага даралтаас их даралт руу', 'Үргэлж хойдоос урагш', 'Дээрээс доош босоо'], 'Салхи бол агаарын <b>хэвтээ</b> хөдөлгөөн. Агаар даралт ихтэй газраас «түлхэгдэнэ».');
+        await quiz(o, 'Агаарын даралт <b>их</b> үед тэнгэр ямар байдаг вэ?', ['Цэлмэг, үүлгүй', 'Үүлтэй, бороотой', 'Үргэлж цастай', 'Шуургатай'], 'Их даралтын үед хөрсөн агаар уруудаж, үүл үүсдэггүй.');
+        await finishQuest(0);
+        await say(o, 'Геологич <b>Ганбат</b> чамаас тусламж хүсэж байна.');
+      } else await say(o, pick(['Агаарын температурыг Цельсийн (°C) хуваариар хэмждэг.', 'Анемометрийн аяга хурдан эргэх тусам салхи хүчтэй байна.']));
+    },
+    async ganbat() {
+      const R = reg(), g = who('ganbat');
+      if (R.q === 1 && R.ph === 'talk') {
+        await say(g, 'Сайн уу! Би геологич <b>Ганбат</b>. Баруун зүгийн хадан цохионуудад янз бүрийн чулуулаг ил гарсан байна.');
+        await quiz(g, 'Чулуулгийг <b>гарал үүслээр</b> нь хэрхэн ангилдаг вэ?', ['Тунамал, магмын, хувирмал', 'Хатуу, зөөлөн, шингэн', 'Цагаан, хар, улаан', 'Том, дунд, бага'], 'Чулуулаг хэрхэн үүссэнээр нь гурав ангилна.');
+        await say(g, '<b>Баруун (Б)</b> зүгийн гурван цохионоос дээж цуглуулж ирээрэй. ' + (S.owned.hammer ? 'Алхаа мартуузай!' : 'Чулуу цохиход <b>Геологийн алх</b> хэрэгтэй. <b>B</b> дарж дэлгүүрээс аваарай.'));
+        set({ ph: 'rocks' });
+      } else if (R.q === 1 && R.ph === 'return') {
+        await say(g, 'Гурван сайхан дээж байна! Боржин, шохойн чулуу, занар.');
+        await quiz(g, 'Газрын гүнээс гарч ирсэн магмыг юу гэх вэ?', ['Лаав', 'Кварц', 'Занар', 'Тунадас'], 'Галт уулаас урсаж гардаг халуун шингэн чулуулаг.');
+        await finishQuest(1);
+        await say(g, 'Тэмээчин <b>Нараа</b>-гийн тэмээ төөрсөн гэсэн. Тусалж өгөөч.');
+      } else await say(g, pick(['Дэлхийн хамгийн нийтлэг эрдсүүд бол хээрийн жонш, кварц.', 'Занарыг дээвэр хийхэд хэрэглэдэг.']));
+    },
+    async naraa() {
+      const R = reg(), n = who('naraa');
+      if (R.q === 2 && R.ph === 'talk') {
+        await say(n, 'Сайн уу! Би тэмээчин <b>Нараа</b>. Хоёр тэмээ маань <b>зүүн (З)</b> зүгийн элсэн манхан руу явчихжээ.');
+        await say(n, 'Луужингаа ашиглаад олоод ирээрэй. Тэмээний дэргэд очвол чамайг дагана. ' + (S.equip.mount === 'horse' ? 'Морьтой юм чинь хурдан хүрнэ дээ!' : 'Морьтой бол хурдан хүрнэ шүү.'));
+        set({ ph: 'find' });
+      } else if (R.q === 2 && R.ph === 'return') {
+        homeCamels(false);
+        await say(n, 'Баярлалаа! Тэмээ бол говийн хамгийн тэсвэртэй амьтан.');
+        await quiz(n, 'Цөлд жилд хэр их <b>хур тунадас</b> ордог вэ?', ['250 мм-ээс бага', '250–500 мм', '2000 мм-ээс их', '100–1200 мм'], '250–500 мм бол хагас хуурай цөл. Цөлд үүнээс ч бага.');
+        await quiz(n, 'Эргэн тойрныхоо бутыг хар. Цөлийн ургамал яагаад <b>навчгүй, өргөстэй</b> байдаг вэ?', ['Чийгээ гадагш алдахгүйн тулд', 'Амьтнаас айдаг тул', 'Нарны гэрэл хэрэггүй тул', 'Хөлдөхгүйн тулд'], 'Навч их байх тусам ус их ууршина.');
+        await quiz(n, 'Үржил шимт газар цөл болж өөрчлөгдөхийг юу гэх вэ?', ['Цөлжилт', 'Ойгүйжилт', 'Элэгдэл', 'Түймэр'], 'Энэ үг «цөл» гэсэн үгээс гаралтай.');
+        await finishQuest(2);
+      } else await say(n, pick(['Тэмээ ус ховор нөхцөлд удаан амьдардаг.', 'Говийн бут сөөг урт үндэстэй, ус хадгалдаг.']));
+    },
+  };
+  async function studyInst(id) {
+    const R = reg();
+    if (id === 'therm') {
+      if (!(await need('thermo', 'Агаарын температур хэмжихэд <b>Термометр</b> хэрэгтэй.'))) return;
+      R.d.temp = 27 + Math.floor(Math.random() * 4);
+      await say(NARR, `Термометр <b>+${R.d.temp}°C</b> заалаа. Агаарын температурыг Цельсийн (°C) хуваариар хэмждэг.`);
+    } else {
+      const Q = {
+        anem: ['Аяганууд нь салхинд эргэдэг энэ <b>анемометр</b> юуг хэмждэг вэ?', ['Салхины хурд', 'Салхины чиглэл', 'Агаарын даралт', 'Агаарын температур'], 'Салхи хүчтэй бол аяга нь олон эргэнэ.'],
+        vane: ['Зүг заагч сумтай энэ <b>флюгер</b> юуг заадаг вэ?', ['Салхины чиглэл', 'Салхины хурд', 'Хур тунадасны хэмжээ', 'Агаарын даралт'], 'Сум нь салхи аль зүгээс үлээж байгааг заана.'],
+        baro: ['Байшин доторх зүүтэй <b>барометр</b> юуг хэмждэг вэ?', ['Агаарын даралт', 'Агаарын температур', 'Салхины хурд', 'Үүлшил'], 'Нэгж нь гПа (гектопаскаль).'],
+      }[id];
+      await quiz(NARR, Q[0], Q[1], Q[2]);
+    }
+    R.d.inst[id] = true;
+    if (['anem', 'vane', 'baro', 'therm'].every(k => R.d.inst[k])) { set({ ph: 'return' }); toast('Бүх багажийг судаллаа! Оюун руу буц.'); } else renderQuest();
+  }
+  async function takeRock(r) {
+    if (!(await need('hammer', 'Хадан цохионоос дээж авахад <b>Геологийн алх</b> хэрэгтэй.'))) return;
+    const R = reg();
+    await quiz(NARR, `Алхаар цохиж <b>${r.name}</b>-ны дээж авлаа. ` + r.q, r.a, r.hint);
+    R.d.rocks[r.id] = true; r.mark.visible = false;
+    if (ROCKS.every(x => R.d.rocks[x.id])) { set({ ph: 'return' }); toast('3 дээж бүрдлээ! Ганбат руу буц.'); } else renderQuest();
+  }
+  return def;
+})();
+
+/* ---------- 3. ХӨВСГӨЛИЙН ТАЙГА ---------- */
+REGIONS.khuvsgul = (() => {
+  const CLEAR = [[-175,-45],[120,-120],[-80,-170],[0,10]];
+  const NEEDLE = [{ x: 58, z: -38 }, { x: -64, z: -52 }, { x: 22, z: -96 }];
+  const BASEF = { x: 10, z: 2 };
+  const ANIMALS = [
+    { id: 'buga', name: 'Буга', make: makeDeer, x: -175, z: -45 },
+    { id: 'khandgai', name: 'Хандгай', make: makeMoose, x: 120, z: -120 },
+    { id: 'baavgai', name: 'Хүрэн баавгай', make: makeBear, x: -80, z: -170 },
+  ];
+  const def = {
+    id: 'khuvsgul', name: 'Хөвсгөлийн тайга', lon: 100.3, lat: 50.9, baseAlt: 1650, sky: 0x9cc6e8, ground: 0x46683a,
+    desc: 'Шилмүүст ой, өндөр уул, том нуур бүхий хойд нутаг. Ой, амьтан, өндрийн бүслүүрийг судална.',
+    topics: ['Шилмүүст ой', 'Ойн амьтад', 'Өндрийн бүслүүр'],
+    camp: { x: 0, z: 10 }, spawn: { x: 0, z: 26 }, bootsAlt: 2000, coldAlt: 2300, contour: 10,
+    lakes: [{ x: 215, z: 150, off: 13, r: 150, disc: 160 }],
+    stars: [[-240,120],[150,40],[-30,-240],[260,-200],[-140,230],[70,250]],
+    H(x, z) {
+      let h = 2*Math.sin(x*.02)*Math.cos(z*.018) + Math.sin(x*.05 + 2)*Math.sin(z*.04);
+      h += Math.max(0, -z - 40) * .06;
+      h += 100*g2(x,z,-30,-250,75) + 55*g2(x,z,-170,-230,60) + 60*g2(x,z,130,-260,65);
+      h += 12*g2(x,z,-200,60,50) + 10*g2(x,z,-120,180,45);
+      h -= 18*g2(x,z,215,150,65);
+      return h;
+    },
+    color(x, z, h) {
+      const L = this.lakes[0];
+      if (h < L.y + .6 && Math.hypot(x - L.x, z - L.z) < 170) return cA.set(0xc8b88a);
+      if (h > 100) return cA.set(0xf3f5f8);
+      if (h > 82) return mix(0x8d8478, 0xf3f5f8, (h - 82) / 18);
+      if (h > 58) return mix(0x9fb46a, 0x8d8478, (h - 58) / 24);
+      if (h > 50) return mix(0x47703a, 0x9fb46a, (h - 50) / 8);
+      return mix(0x47703a, 0x79a85a, g2(x, z, 0, 10, 40) * 1.5);
+    },
+    quests: [
+      { title: 'Шилмүүст ой', topic: '6.2 · Дэлхийн ургамал', fact: { t: 'Шилмүүст ой', ref: 'СБ 65–67, 74-р тал', x: 'Ой модыг <b>навчит</b>, <b>шилмүүст</b> гэж ангилна. Шилмүүст модны навч <b>зүү мэт</b> хэлбэртэй. Хойд бүс нутгууд шилмүүст ойтой. Шилмүүст ойд хүйтэнд тэсвэртэй цөөн зүйлийн ургамал ургадаг.' } },
+      { title: 'Ойн амьтад', topic: '6.3 · Дэлхийн амьтан', fact: { t: 'Ойн амьтад', ref: 'СБ 72-р тал', x: 'Сэрүүн бүсийн ойд <b>буга, хандгай, туулай, хэрэм</b> зэрэг өвсөн тэжээлтэн, <b>чоно, үнэг, хүрэн баавгай</b> зэрэг махан идэштэн амьдардаг.' } },
+      { title: 'Өндрийн бүслүүр', topic: '4.1, 6.4 · Өндөр ба температур', fact: { t: 'Өндрийн бүслүүр', ref: 'СБ 32, 74-р тал', x: 'Өндөр өгсөх тусам агаарын <b>температур, даралт буурна</b>. 100 м өгсөх тусам температур <b>0,6°C</b>-аар, 1 км өгсөхөд 6°C-аар буурдаг. Уулын бэлээс орой хүртэл өндрийн дагуу ялгарах бүсийг <b>өндрийн бүслүүр</b> гэнэ.' } },
+    ],
+  };
+  let PEAK, animals;
+  def.init = () => {
+    makeUrts(-8, 2); makeUrts(-2, -6); makeGer(8, -4, .9);
+    PEAK = findPeak(-30, -250, 40);
+    makeFlag(BASEF.x, BASEF.z, 0xffd54a, 'Хэмжилтийн цэг');
+    makeFlag(PEAK.x, PEAK.z, 0xe74c3c, 'Орой');
+    const L = def.lakes[0], spots = [];
+    for (let t = 0; t < 14000 && spots.length < 1100; t++) {
+      const x = -330 + rnd()*660, z = -330 + rnd()*660, h = groundY(x, z);
+      if (h > 1 && h < 52 && h > L.y + 1.5 && !CLEAR.some(([cx, cz]) => Math.hypot(x - cx, z - cz) < 26) && !NEEDLE.some(n => Math.hypot(x - n.x, z - n.z) < 4) && Math.abs(x - BASEF.x) + Math.abs(z) > 6) spots.push([x, h, z, .9 + rnd()*.8]);
+    }
+    instTrees(spots, { crown: 0x24553a, h: 7, r: 1.6 });
+    NEEDLE.forEach(n => {
+      const y = groundY(n.x, n.z), g = new THREE.Group();
+      const tr = new THREE.Mesh(new THREE.CylinderGeometry(.35, .5, 2.4, 6), mat(0x6b4a2b)); tr.position.y = 1.2; g.add(tr);
+      for (let k = 0; k < 3; k++) { const c = new THREE.Mesh(new THREE.ConeGeometry(2.6 - k*.6, 3.4, 8), mat(0x2e6b45)); c.position.y = 3 + k * 2; g.add(c); }
+      const rb = new THREE.Mesh(new THREE.TorusGeometry(.42, .1, 6, 12), mat(0xe74c3c)); rb.rotation.x = Math.PI/2; rb.position.y = 1.8; g.add(rb);
+      g.position.set(n.x, y, n.z); add(shadowAll(g));
+      n.lbl = label('Дээж', { bg: '#e74c3c', h: 1 }); n.lbl.position.set(n.x, y + 10, n.z); add(n.lbl);
+    });
+    const rk = []; for (let t = 0; t < 3000 && rk.length < 140; t++) { const x = -330 + rnd()*660, z = -330 + rnd()*660, h = groundY(x, z); if (h > 55) rk.push([x, h, z, .6 + rnd()*1.8]); }
+    instRocks(rk);
+    npc('nomin', 'Байгаль хамгаалагч Номин', 'Н', '#9be39b', LOOK.nomin, -6, 14);
+    npc('temuulen', 'Уулчин Тэмүүлэн', 'Т', '#ffd28a', LOOK.temuulen, 7, 15);
+    trader(-14, 8);
+    const R = reg();
+    R.d.needles = R.d.needles || {}; R.d.spot = R.d.spot || {};
+    NEEDLE.forEach((n, i) => { if (R.d.needles[i]) n.lbl.visible = false; });
+    animals = ANIMALS.map(a => { const g = a.make(); const p = { x: a.x, z: a.z }; g.position.set(p.x, groundY(p.x, p.z), p.z); add(g); return Object.assign({}, a, { g, home: p, to: null, timer: 0 }); });
+    W.inter.push(
+      ...NEEDLE.map((n, i) => ({ pos: () => n, r: 5, label: () => R.q === 0 && R.ph === 'needles' && !R.d.needles[i] ? 'Шилмүүсний дээж авах' : null, act: () => takeNeedle(i) })),
+      { pos: () => BASEF, r: 5, label: () => R.q === 2 && R.ph === 'base' ? 'Термометрээр температур хэмжих' : null, act: measureT0 },
+      { pos: () => PEAK, r: 7, label: () => R.q === 2 && R.ph === 'peak' ? 'Оройд температур хэмжих' : null, act: measureT1 },
+    );
+    W.tick = (dt, t) => {
+      animals.forEach(a => {
+        const g = a.g, dP = Math.hypot(P.x - g.position.x, P.z - g.position.z);
+        if (dP < 35 && !a.to) {   // ойртвол зугтана
+          const dx = g.position.x - P.x, dz = g.position.z - P.z, l = Math.hypot(dx, dz) || 1;
+          a.to = { x: Math.max(-300, Math.min(300, g.position.x + dx / l * 90)), z: Math.max(-300, Math.min(300, g.position.z + dz / l * 90)) };
+          if (R.q === 1 && R.ph === 'spot') toast(`${a.name} айж зугтлаа! Холоос дурангаар (Z) ажигла.`);
+        }
+        let tx = a.to ? a.to.x : a.home.x + Math.sin(t * .15 + a.x) * 3, tz = a.to ? a.to.z : a.home.z + Math.cos(t * .15 + a.x) * 3;
+        const dx = tx - g.position.x, dz = tz - g.position.z, d = Math.hypot(dx, dz), sp = a.to ? 22 : 1;
+        if (d > .5) { const m = Math.min(d, sp * dt); g.position.x += dx/d*m; g.position.z += dz/d*m; g.rotation.y = Math.atan2(dx, dz); }
+        else if (a.to) { a.home = a.to; a.to = null; }
+        walkQuad(g, t * (a.to ? 12 : 3), d > .5 ? 1 : 0);
+        g.position.y = groundY(g.position.x, g.position.z);
+        // дурангаар ажиглах
+        if (R.q === 1 && R.ph === 'spot' && binoc && !R.d.spot[a.id]) {
+          const v = new THREE.Vector3(g.position.x, g.position.y + 1.5, g.position.z).sub(camera.position), dist = v.length();
+          const f = new THREE.Vector3(); camera.getWorldDirection(f);
+          if (dist < 320 && f.angleTo(v) < .07) { a.timer += dt; if (a.timer > .5) { R.d.spot[a.id] = true; toast(`Дурангаар ажиглалаа: ${a.name}!`); if (ANIMALS.every(x => R.d.spot[x.id])) set({ ph: 'return' }); else renderQuest(); } }
+          else a.timer = 0;
+        }
+      });
+    };
+    W.marks = () => [{ x: -4, z: 0, t: 'ger' }, { x: -2, z: 26, t: 'text', s: 'Хуаран' }, { x: PEAK.x, z: PEAK.z, t: 'peak', s: round10(altOf(PEAK.y)) + ' м' }, { x: 215, z: 150, t: 'text', s: 'Нуур', c: '#0d3a66' },
+      ...(R.q === 1 ? animals.filter(a => !R.d.spot[a.id]).map(a => ({ x: a.g.position.x, z: a.g.position.z, t: 'text', s: '?', c: '#6b3d00' })) : [])];
+    W.distFrom = () => null;
+  };
+  def.objective = R => {
+    const { q, ph, d } = R, L = [], a = (t, done, need) => L.push({ t, done, need });
+    if (q === 0) { a('Байгаль хамгаалагч Номинтой ярих', ph !== 'talk'); if (!S.owned.jar) a('Дэлгүүрээс «Дээжний сав» авах (B)', false, true); a(`Улаан туузтай модноос шилмүүсний дээж авах (${Object.keys(d.needles || {}).length}/3)`, ph === 'return'); a('Номинд дээжээ үзүүлэх', false); }
+    else if (q === 1) { a('Номинтой ярих', ph !== 'talk'); if (!S.owned.binoc) a('Дэлгүүрээс «Дуран» авах (B)', false, true); ANIMALS.forEach(x => a(`Дурангаар ажиглах: ${(d.spot || {})[x.id] ? x.name : '???'}`, !!(d.spot || {})[x.id])); a('Номинд мэдэгдэх', false); }
+    else if (q === 2) { a('Уулчин Тэмүүлэнтэй ярих', ph !== 'talk'); if (!S.owned.thermo) a('Дэлгүүрээс «Термометр» авах (B)', false, true); if (!S.owned.boots) a('Дэлгүүрээс «Уулын гутал» авах (B)', false, true); if (!S.owned.jacket) a('Дэлгүүрээс «Дулаан хүрэм» авах (B)', false, true); a('Хуаран дахь шар туг дээр температур хэмжих' + (d.t0 != null ? ` · ${fmt1(d.t0)}°C` : ''), d.t0 != null); a('Оргилд гарч температур хэмжих', d.t1 != null); }
+    return L;
+  };
+  def.needsTalk = (id, R) => {
+    if (id === 'nomin') return (R.q === 0 || R.q === 1) && (R.ph === 'talk' || R.ph === 'return');
+    if (id === 'temuulen') return R.q === 2 && R.ph === 'talk';
+    return false;
+  };
+  def.target = R => {
+    if (R.q === 0 && R.ph === 'needles') { for (let i = 0; i < 3; i++) if (!R.d.needles[i]) return NEEDLE[i]; }
+    if (R.q === 2 && R.ph === 'base') return BASEF;
+    if (R.q === 2 && R.ph === 'peak') return PEAK;
+    return null;
+  };
+  def.talk = {
+    async nomin() {
+      const R = reg(), n = who('nomin');
+      if (R.q === 0 && R.ph === 'talk') {
+        await say(n, 'Тайгад тавтай морил! Би байгаль хамгаалагч <b>Номин</b>. Энэ ойн модыг хамт судалъя.');
+        await say(n, 'Хуарангийн ойролцоо <b>улаан тууз</b> зүүсэн 3 мод бий. Тэдгээрээс шилмүүсний дээж аваад ирээрэй.' + (S.owned.jar ? '' : ' Дээж хийх <b>Дээжний сав</b> хэрэгтэй.'));
+        set({ ph: 'needles' });
+      } else if (R.q === 0 && R.ph === 'return') {
+        await quiz(n, 'Дээжээ хар. Шилмүүст модны навч ямар хэлбэртэй вэ?', ['Зүү мэт', 'Том, далбагар', 'Дугуй, хавтгай', 'Махлаг, өргөстэй'], 'Шилмүүс гэдэг үгийг санаарай. Нарийн, хурц.');
+        await quiz(n, 'Хойд бүс нутгууд голдуу ямар ойтой вэ?', ['Шилмүүст ой', 'Тропикийн ширэнгэн ой', 'Өргөн навчит ой', 'Ойгүй, зөвхөн цөл'], 'Эргэн тойрныхоо модыг хар!');
+        await quiz(n, 'Шилмүүст ойд яагаад <b>цөөн зүйлийн</b> ургамал ургадаг вэ?', ['Зөвхөн хүйтэнд тэсвэртэй ургамал ургадаг тул', 'Хур тунадас огт ордоггүй тул', 'Хөрс огт байдаггүй тул', 'Нар хэзээ ч тусдаггүй тул'], 'Энэ нутгийн өвөл ямар байдгийг бод.');
+        await finishQuest(0);
+      } else if (R.q === 1 && R.ph === 'talk') {
+        await say(n, 'Энэ ойд <b>буга, хандгай, хүрэн баавгай</b> амьдардаг. Тэд хүнээс айдаг тул ойртвол зугтана.');
+        await say(n, '<b>Дуран</b>-аар холоос ажиглаарай. <b>Z</b> товч эсвэл хулганы <b>баруун товч</b>-ийг дарж дурангаа харж, амьтныг төв загалмайд тааруулна. <b>M</b> дарвал амьтдын байрлал «?» гэж харагдана.' + (S.owned.binoc ? '' : ' Танд дуран алга. <b>B</b> дарж аваарай.'));
+        set({ ph: 'spot' });
+      } else if (R.q === 1 && R.ph === 'return') {
+        await quiz(n, 'Таны ажигласан амьтдаас аль нь <b>махан идэштэн</b> вэ?', ['Хүрэн баавгай', 'Буга', 'Хандгай', 'Хэрэм'], 'Махан идэштэн бусад амьтныг агнадаг.');
+        await quiz(n, 'Буга, хандгай ямар тэжээлтэн бэ?', ['Өвсөн тэжээлтэн', 'Махан идэштэн', 'Шавж идэштэн', 'Загас идэштэн'], 'Тэд өвс, навч, мөчир иддэг.');
+        await finishQuest(1);
+        await say(n, 'Уулчин <b>Тэмүүлэн</b> оргил руу гарах гэж байна. Түүнтэй ярь.');
+      } else await say(n, pick(['Ойд гал түлэхдээ болгоомжтой байгаарай.', 'Шилмүүст мод хүйтэнд тэсвэртэй.']));
+    },
+    async temuulen() {
+      const R = reg(), t = who('temuulen');
+      if (R.q === 2 && R.ph === 'talk') {
+        await say(t, 'Дахин уулзсандаа баяртай байна! Энэ уул Хангайнхаас хамаагүй өндөр. Уулын бэлээс орой хүртэл ой, нуга, хад чулуу ээлжилж байгааг хар.');
+        await say(t, 'Өгсөх тусам температур хэрхэн өөрчлөгдөхийг хэмжье. Хуаран дахь <b>шар туг</b> дээр, дараа нь <b>оргил</b> дээр термометрээр хэмжинэ.');
+        const miss = ['thermo', 'boots', 'jacket'].filter(k => !S.owned[k]).map(k => ITEM[k].name);
+        if (miss.length) await say(t, `Танд <b>${miss.join(', ')}</b> хэрэгтэй. 2000 м-ээс дээш гутал, 2300 м-ээс дээш дулаан хүрэм хэрэг болно. <b>B</b> дарж аваарай.`);
+        set({ ph: 'base' });
+      } else await say(t, pick(['Өндөр уулд агаар сийрэг, даралт бага.', 'Нарлаг өмнө талд бүслүүрүүд арай өндөрт хүрдэг.']));
+    },
+  };
+  async function takeNeedle(i) {
+    if (!(await need('jar', 'Дээж хийх <b>Дээжний сав</b> хэрэгтэй.'))) return;
+    const R = reg();
+    R.d.needles[i] = true; NEEDLE[i].lbl.visible = false;
+    toast(`Шилмүүсний дээж авлаа (${Object.keys(R.d.needles).length}/3)`);
+    if (Object.keys(R.d.needles).length >= 3) set({ ph: 'return' }); else renderQuest();
+  }
+  async function measureT0() {
+    if (!(await need('thermo', 'Температур хэмжихэд <b>Термометр</b> хэрэгтэй.'))) return;
+    const R = reg(); R.d.t0 = 15; R.d.a0 = round10(altOf(groundY(BASEF.x, BASEF.z)));
+    await say(NARR, `Хэмжилтийн цэг: өндөр <b>${R.d.a0} м</b>, температур <b>+15°C</b>. Одоо оргил руу авираарай!`);
+    set({ ph: 'peak' });
+  }
+  async function measureT1() {
+    if (!(await need('thermo', 'Температур хэмжихэд <b>Термометр</b> хэрэгтэй.'))) return;
+    const R = reg(), a1 = round10(altOf(PEAK.y)), dA = a1 - R.d.a0, t1 = Math.round((R.d.t0 - dA * .006) * 10) / 10, dT = Math.round((R.d.t0 - t1) * 10) / 10;
+    R.d.t1 = t1;
+    await say(NARR, `Оргил: өндөр <b>${a1} м</b>, температур <b>+${fmt1(t1)}°C</b>. Та <b>${dA} м</b> өгсөхөд температур <b>${fmt1(dT)}°C</b>-аар буурлаа.`);
+    const t = who('temuulen');
+    await quiz(t, `${dA} м өгсөхөд ${fmt1(dT)}°C буурсан бол <b>100 м</b> өгсөх тусам температур хэдээр буурсан бэ?`, ['0,6°C', '6°C', '10°C', '1°C'], `${fmt1(dT)} ÷ ${fmt1(dA / 100)} = ?`);
+    await quiz(t, 'Уулын өндөрт гарах тусам агаарын <b>температур, даралт</b> хэрхэн өөрчлөгдөх вэ?', ['Хоёулаа буурна', 'Хоёулаа өснө', 'Өөрчлөгдөхгүй', 'Температур өсч, даралт буурна'], 'Оргил дээр дулаан хүрэм яагаад хэрэгтэй байсныг бод.');
+    await quiz(t, 'Уулын бэлээс орой хүртэл ой, нуга, хад ээлжилж буй ийм бүсийг юу гэх вэ?', ['Өндрийн бүслүүр', 'Газар зүйн бүслүүр', 'Цөлжилт', 'Ус хагалбар'], 'Өндрийн дагуу ялгарах бүс.');
+    await finishQuest(2);
+  }
+  return def;
+})();
+const ORDER = ['hangai', 'gobi', 'khuvsgul'];
+
+/* ================= ЭД ЗҮЙЛ ================= */
+const ITEMS = [
+  { id: 'jar', type: 'tool', icon: '🧪', name: 'Дээжний сав', price: 1, desc: 'Ус, ургамлын дээж хийнэ.', use: 'Хангай: Голын аялал · Хөвсгөл: Шилмүүст ой' },
+  { id: 'boots', type: 'tool', icon: '🥾', name: 'Уулын гутал', price: 2, desc: 'Эгц энгэрт гулсахгүй. Хангайд 1600 м, Хөвсгөлд 2000 м-ээс дээш гарахад хэрэгтэй.', use: 'Хангай: Уул хэр өндөр вэ? · Хөвсгөл: Өндрийн бүслүүр' },
+  { id: 'thermo', type: 'tool', icon: '🌡️', name: 'Термометр', price: 2, desc: 'Агаарын температурыг °C-ээр хэмжинэ.', use: 'Говь: Цаг уурын станц · Хөвсгөл: Өндрийн бүслүүр' },
+  { id: 'hammer', type: 'tool', icon: '🔨', name: 'Геологийн алх', price: 2, desc: 'Хадан цохионоос чулуулгийн дээж авна.', use: 'Говь: Чулуулгийн дээж' },
+  { id: 'binoc', type: 'tool', icon: '🔭', name: 'Дуран', price: 3, desc: 'Холын зүйлийг ойртуулж харна. Z эсвэл хулганы баруун товч.', use: 'Хөвсгөл: Ойн амьтад' },
+  { id: 'jacket', type: 'outfit', slot: 'outfit', icon: '🧥', name: 'Дулаан хүрэм', price: 3, desc: 'Өндөр уулын хүйтнээс хамгаална. 2300 м-ээс дээш гарахад хэрэгтэй.', use: 'Хөвсгөл: Өндрийн бүслүүр' },
+  { id: 'sunhat', type: 'outfit', slot: 'hat', icon: '👒', name: 'Нарны малгай', price: 1, desc: 'Өргөн хүрээтэй, улаан туузтай малгай.' },
+  { id: 'shades', type: 'outfit', slot: 'glasses', icon: '🕶️', name: 'Нарны шил', price: 2, desc: 'Говийн хурц нарнаас нүдээ хамгаална.' },
+  { id: 'deel', type: 'outfit', slot: 'outfit', icon: '👘', name: 'Монгол дээл', price: 3, desc: 'Цэнхэр дээл, шар бүстэй.' },
+  { id: 'horse', type: 'outfit', slot: 'mount', icon: '🐎', name: 'Морь', price: 5, desc: 'Мордвол 1,7 дахин хурдан явна.' },
+];
+const ITEM = Object.fromEntries(ITEMS.map(i => [i.id, i]));
+const LEVELS = [[0, 'Шинэ аялагч'], [8, 'Залуу судлаач'], [18, 'Газарзүйч'], [30, 'Экспедицийн ахлагч'], [42, 'Агуу аялагч']];
+const levelOf = e => { let i = 0; LEVELS.forEach((l, k) => { if (e >= l[0]) i = k; }); return i; };
+
+/* ================= ТӨЛӨВ ================= */
+const SAVE_KEY = 'gazarzui-aylagch-v2';
+const freshReg = () => ({ q: 0, ph: 'talk', mist: 0, d: {} });
+const fresh = () => ({ region: null, reg: { hangai: freshReg(), gobi: freshReg(), khuvsgul: freshReg() }, wallet: 0, earned: 0, owned: {}, equip: {}, qstars: {}, found: { hangai: [], gobi: [], khuvsgul: [] }, walk: 0, pos: null, yaw: 0 });
+let S = fresh();
+const reg = () => S.reg[S.region];
+const P = { x: 0, z: 24, y: 0, vy: 0, jump: 0, face: Math.PI, walkT: 0, moving: 0 };
+const cam = { yaw: 0, pitch: .38, dist: 13 };
+function save() { try { if (W) { S.pos = { x: P.x, z: P.z }; S.yaw = cam.yaw; } localStorage.setItem(SAVE_KEY, JSON.stringify(S)); } catch (e) {} }
+function loadSave() { try { const s = JSON.parse(localStorage.getItem(SAVE_KEY)); return s && s.reg ? s : null; } catch (e) { return null; } }
+const regionDone = id => S.reg[id].q >= REGIONS[id].quests.length;
+const unlocked = id => { const i = ORDER.indexOf(id); return i === 0 || regionDone(ORDER[i - 1]); };
+
+/* ================= ДҮР ================= */
+let player = null, horse = null;
+function buildPlayer() {
+  if (player) scene.remove(player.g);
+  const e = S.equip;
+  const look = { shirt: 0x16a085, pants: 0x2c3e50, skin: 0xf1c9a5, hair: 0x2b1d14, pack: 0xf39c12, hat: 'cap', hatColor: 0xf1c40f };
+  if (e.hat === 'sunhat') { look.hat = 'wide'; look.hatColor = 0xf3e2b3; }
+  if (e.glasses === 'shades') look.glasses = true;
+  if (e.outfit === 'deel') { look.deel = true; look.shirt = 0x2f6fd6; look.belt = 0xf1c40f; }
+  if (e.outfit === 'jacket') { look.jacket = true; look.shirt = 0xd63031; }
+  player = makeChar(look);
+  horse = null;
+  if (e.mount === 'horse') { horse = makeHorse(); player.g.add(horse); player.body.position.y = 1.55; player.legs.forEach(l => l.rotation.z = 0); }
+  scene.add(player.g);
+}
+
+/* ================= НУТАГ АЧААЛАХ ================= */
+function loadRegion(id, atSpawn) {
+  scene.remove(world);
+  world.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) { (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => { if (m.map) m.map.dispose(); m.dispose(); }); } });
+  world = new THREE.Group(); scene.add(world);
+  S.region = id;
+  const def = REGIONS[id];
+  seed = 7 + ORDER.indexOf(id) * 1000;
+  W = { def, npc: {}, inter: [], talk: def.talk, tick: () => {}, marks: () => [], distFrom: () => null, mapOpened: () => {}, mapBase: null, stars: [] };
+  W.HG = buildTerrain(def);
+  buildWater(def);
+  def.init();
+  // нуугдмал од
+  const found = S.found[id];
+  def.stars.forEach(([x, z], i) => { if (found.includes(i)) return; const m = starMesh(); m.position.set(x, groundY(x, z) + 1.6, z); add(m); W.stars.push({ i, m, x, z }); });
+  scene.background.set(def.sky); scene.fog.color.set(def.sky); hemi.groundColor.set(def.ground);
+  if (atSpawn || !S.pos) { P.x = def.spawn.x; P.z = def.spawn.z; cam.yaw = 0; P.face = Math.PI; }
+  else { P.x = S.pos.x; P.z = S.pos.z; cam.yaw = S.yaw || 0; }
+  renderQuest(); renderStats(); save();
+}
+
+/* ================= HUD ================= */
+const DIRS = [[0,'Х'],[45,'ЗХ'],[90,'З'],[135,'ЗӨ'],[180,'Ө'],[225,'БӨ'],[270,'Б'],[315,'БХ']];
+const DIR_FULL = { 'Х':'хойд', 'ЗХ':'зүүн хойд', 'З':'зүүн', 'ЗӨ':'зүүн өмнөд', 'Ө':'өмнөд', 'БӨ':'баруун өмнөд', 'Б':'баруун', 'БХ':'баруун хойд' };
+const compass = $('#compass'), compItems = [];
+for (let a = 0; a < 360; a += 15) {
+  const d = DIRS.find(x => x[0] === a), el = document.createElement('div');
+  if (d) { el.className = 'it' + (a % 90 === 0 ? ' main' : '') + (a === 0 ? ' n' : ''); el.textContent = d[1]; } else el.className = 'tick';
+  compass.appendChild(el); compItems.push([a, el]);
+}
+function updateCompass(head) {
+  const w = compass.clientWidth, ppd = w / 150;
+  compItems.forEach(([a, el]) => { const d = ((a - head + 540) % 360) - 180; el.style.display = Math.abs(d) > 75 ? 'none' : ''; el.style.left = (w/2 + d*ppd) + 'px'; });
+  const h = ((head % 360) + 360) % 360;
+  $('#heading').textContent = 'Чиглэл: ' + DIR_FULL[DIRS[Math.round(h / 45) % 8][1]] + ' · ' + Math.round(h) + '°';
+}
+function renderQuest() {
+  if (!W || !S.region) return;
+  const def = W.def, R = reg(), el = $('#quest');
+  const prog = def.quests.map((_, i) => `<i class="${i < R.q ? 'on' : ''}"></i>`).join('');
+  if (R.q >= def.quests.length) el.innerHTML = `<div class="topic">${def.name}</div><h2>Бүх даалгавар биеллээ</h2><ul><li class="${ORDER.every(regionDone) ? 'done' : ''}">${ORDER.every(regionDone) ? 'Бүх нутгаар аялж дууслаа!' : '<kbd>T</kbd> дарж дараагийн нутгаа сонго'}</li></ul><div class="prog">${prog}</div>`;
+  else { const Q = def.quests[R.q]; el.innerHTML = `<div class="topic">${def.name} · ${R.q + 1}/${def.quests.length} · ${Q.topic}</div><h2>${Q.title}</h2><ul>${def.objective(R).map(o => `<li class="${o.done ? 'done' : o.need ? 'need' : ''}">${o.t}</li>`).join('')}</ul><div class="prog">${prog}</div>`; }
+  Object.values(W.npc).forEach(n => n.mark.visible = !!def.needsTalk(n.id, R));
+  renderStats();
+}
+function renderStats() {
+  const li = levelOf(S.earned), nx = LEVELS[li + 1];
+  $('#sLvl').innerHTML = `Түвшин ${li + 1} · ${LEVELS[li][1]}<small>${nx ? `Дараагийн түвшин: ${nx[0] - S.earned} од` : 'Хамгийн дээд түвшин!'}</small><div class="xp"><i style="width:${nx ? (S.earned - LEVELS[li][0]) / (nx[0] - LEVELS[li][0]) * 100 : 100}%"></i></div>`;
+  $('#sStars').textContent = S.wallet + ' ★';
+  if (W && S.region) $('#sHidden').textContent = S.found[S.region].length + '/' + W.def.stars.length;
+  $('#bag').innerHTML = ITEMS.filter(i => S.owned[i.id]).map(i => `<span title="${i.name}">${i.icon}</span>`).join('') || '<span title="Цүнх хоосон">🎒</span>';
+}
+let toastT;
+function toast(t) { const e = $('#toast'); e.innerHTML = t; e.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => e.classList.remove('on'), 2800); }
+function set(o) { Object.assign(reg(), o); renderQuest(); save(); }
+function addStars(n, earned = true) {
+  const before = levelOf(S.earned);
+  S.wallet += n; if (earned) S.earned += n;
+  const after = levelOf(S.earned);
+  renderStats();
+  if (after > before) setTimeout(() => toast(`Түвшин ахилаа! Та одоо «${LEVELS[after][1]}» боллоо`), 900);
+}
+
+/* ================= ЯРИА, АСУУЛТ ================= */
+const D = { open: false, onNext: null, onOpt: null, at: 0 };
+function showBox(w, html, fact) {
+  unlock();
+  const d = $('#dialog'); d.hidden = false; d.classList.toggle('fact', !!fact);
+  $('#dFace').textContent = w.short; $('#dFace').style.background = w.color;
+  $('#dWho').textContent = w.name; $('#dTxt').innerHTML = html;
+  $('#dOpts').innerHTML = ''; $('#dFb').textContent = ''; $('#dFb').className = 'fb';
+  D.open = true; D.at = performance.now(); keys.clear(); setBinoc(false);
+}
+function closeBox() { $('#dialog').hidden = true; D.open = false; D.onNext = D.onOpt = null; }
+function say(w, html, fact) {
+  return new Promise(res => { showBox(w, html, fact); $('#dNext').hidden = false; D.onOpt = null; D.onNext = () => { closeBox(); res(); }; });
+}
+// opts[0] нь зөв хариулт
+function quiz(w, q, opts, hint, okText) {
+  return new Promise(res => {
+    showBox(w, q); $('#dNext').hidden = true;
+    const order = shuffle(opts.map((t, i) => ({ t, ok: i === 0 }))), box = $('#dOpts'), fb = $('#dFb');
+    const btns = order.map((o, i) => { const b = document.createElement('button'); b.innerHTML = `<kbd>${i + 1}</kbd><span>${o.t}</span>`; b.onclick = () => choose(i); box.appendChild(b); return b; });
+    let done = false;
+    function choose(i) {
+      if (done || !btns[i] || btns[i].disabled) return;
+      if (order[i].ok) {
+        done = true; btns[i].classList.add('good'); btns.forEach(b => b.disabled = true);
+        fb.className = 'fb good'; fb.innerHTML = 'Зөв! ' + (okText || '');
+        $('#dNext').hidden = false; D.onOpt = null; D.onNext = () => { closeBox(); res(); };
+      } else { reg().mist++; btns[i].classList.add('bad'); btns[i].disabled = true; fb.className = 'fb bad'; fb.innerHTML = 'Буруу байна. ' + (hint || 'Дахин оролдоорой.'); }
+    }
+    D.onOpt = choose; D.onNext = null;
+  });
+}
+async function need(item, why) {
+  if (S.owned[item]) return true;
+  await say(NARR, `${why} <b>B</b> дарж дэлгүүрээс <b>${ITEM[item].name}</b> (${ITEM[item].price} ★) аваарай. Танд одоо <b>${S.wallet} ★</b> байна.`);
+  return false;
+}
+async function finishQuest(i) {
+  const R = reg(), def = W.def, stars = R.mist === 0 ? 3 : R.mist <= 2 ? 2 : 1;
+  S.qstars[def.id + '-' + i] = stars;
+  addStars(stars);
+  const f = def.quests[i].fact;
+  await say(NARR, `<div class="stars">${'★'.repeat(stars)}${'☆'.repeat(3 - stars)}</div><b>«${def.quests[i].title}»</b> биеллээ! <b>+${stars} ★</b> авлаа. Аяллын тэмдэглэлд шинэ баримт нэмэгдлээ:<br><br><b>${f.t}.</b> ${f.x}<div class="ref">${f.ref}</div>`, true);
+  set({ q: i + 1, ph: 'talk', mist: 0 });
+  if (R.q >= def.quests.length) {
+    if (ORDER.every(regionDone)) { await say(NARR, 'Та Монгол орны гурван нутгийн бүх даалгаврыг биелүүллээ!'); showFinale(); }
+    else { const nx = ORDER.find(id => !regionDone(id)); await say(NARR, `<b>${def.name}</b>-ийн бүх даалгавар биеллээ! <b>${REGIONS[nx].name}</b> руу аялах зам нээгдлээ. <b>T</b> дарж Монголын газрын зургаас сонгоорой.`); }
+  }
+}
+let busy = false;
+async function run(fn) { if (busy) return; busy = true; try { await fn(); } finally { busy = false; renderQuest(); if (!uiOpen()) lock(); } }
+
+/* ================= ДЭЛГҮҮР ================= */
+let shopTab = 'tool';
+function renderShop() {
+  $('#shWallet').textContent = S.wallet + ' ★';
+  document.querySelectorAll('#shop .tabs button').forEach(b => b.setAttribute('aria-pressed', b.dataset.tab === shopTab));
+  $('#shGrid').innerHTML = ITEMS.filter(i => (shopTab === 'tool' ? i.type === 'tool' || i.id === 'jacket' : i.type === 'outfit')).map(i => {
+    const own = S.owned[i.id], eq = i.slot && S.equip[i.slot] === i.id;
+    let btn;
+    if (!own) btn = `<button data-buy="${i.id}" ${S.wallet < i.price ? 'disabled' : ''}>Авах · ${i.price} ★</button>`;
+    else if (i.slot) btn = `<button class="${eq ? 'eq' : 'own'}" data-eq="${i.id}">${eq ? 'Тайлах' : (i.slot === 'mount' ? 'Мордох' : 'Өмсөх')}</button>`;
+    else btn = `<button class="own" disabled>Цүнхэнд байна ✓</button>`;
+    return `<div class="it"><div class="ic">${i.icon}</div><h4>${i.name}</h4><p>${i.desc}</p>${i.use ? `<div class="use">Хэрэглэх: ${i.use}</div>` : ''}${btn}</div>`;
+  }).join('');
+}
+$('#shop').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.tab) { shopTab = b.dataset.tab; renderShop(); }
+  if (b.dataset.buy) { const i = ITEM[b.dataset.buy]; if (S.wallet < i.price) return; S.wallet -= i.price; S.owned[i.id] = true; if (i.slot) S.equip[i.slot] = i.id; toast(`${i.name} авлаа!`); buildPlayer(); renderShop(); renderQuest(); save(); }
+  if (b.dataset.eq) { const i = ITEM[b.dataset.eq]; S.equip[i.slot] = S.equip[i.slot] === i.id ? null : i.id; buildPlayer(); renderShop(); save(); }
+});
+
+/* ================= ГАЗРЫН ЗУРАГ (M) ================= */
+const MAPC = $('#mapC'), MCX = MAPC.getContext('2d'), MW = 640;
+const toMap = (x, z) => [(x + 330) / 660 * MW, (z + 330) / 660 * MW];
+function buildMapBase() {
+  const cv = document.createElement('canvas'); cv.width = cv.height = MW;
+  const cx = cv.getContext('2d'), img = cx.createImageData(MW, MW), d = img.data, hs = new Float32Array(MW * MW), step = W.def.contour;
+  let lo = 1e9, hi = -1e9;
+  for (let j = 0; j < MW; j++) for (let i = 0; i < MW; i++) { const h = groundY(i / MW * 660 - 330, j / MW * 660 - 330); hs[j*MW + i] = h; lo = Math.min(lo, h); hi = Math.max(hi, h); }
+  const ramp = [[0,[140,197,106]],[.2,[201,220,132]],[.4,[234,217,140]],[.6,[223,180,106]],[.8,[197,135,80]],[1,[168,100,58]]];
+  const colAt = h => { const v = (h - lo) / (hi - lo || 1); for (let k = ramp.length - 2; k >= 0; k--) if (v >= ramp[k][0]) { const a = ramp[k], b = ramp[k+1], t = (v - a[0]) / (b[0] - a[0]); return a[1].map((c, q) => c + (b[1][q] - c) * t); } return ramp[0][1]; };
+  for (let j = 0; j < MW; j++) for (let i = 0; i < MW; i++) {
+    const k = j*MW + i, h = hs[k], p = k * 4, wx = i / MW * 660 - 330, wz = j / MW * 660 - 330, L = lakeAt(wx, wz);
+    let c;
+    if (L && h < L.y - .05) c = [90, 160, 224];
+    else {
+      c = colAt(h); const band = Math.floor(h / step);
+      const r = i < MW - 1 ? Math.floor(hs[k + 1] / step) : band, b = j < MW - 1 ? Math.floor(hs[k + MW] / step) : band;
+      if (band !== r || band !== b) c = [138, 90, 43];
+    }
+    d[p] = c[0]; d[p+1] = c[1]; d[p+2] = c[2]; d[p+3] = 255;
+  }
+  cx.putImageData(img, 0, 0);
+  (W.def.rivers || []).forEach(R => { cx.strokeStyle = '#2f7fd0'; cx.lineWidth = 3; cx.lineJoin = 'round'; cx.beginPath(); R.forEach(([x, z], i) => { const [a, b] = toMap(x, z); i ? cx.lineTo(a, b) : cx.moveTo(a, b); }); cx.stroke(); });
+  W.mapBase = cv;
+}
+function drawMap() {
+  if (!W.mapBase) buildMapBase();
+  const c = MCX; c.drawImage(W.mapBase, 0, 0);
+  c.font = '800 15px Nunito, sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
+  const tag = (x, z, t, col = '#1c2a38') => { const [a, b] = toMap(x, z); c.lineWidth = 4; c.strokeStyle = 'rgba(255,255,255,.85)'; c.strokeText(t, a, b); c.fillStyle = col; c.fillText(t, a, b); };
+  W.marks().forEach(m => {
+    const [a, b] = toMap(m.x, m.z);
+    if (m.t === 'ger') [[-6,4],[7,2],[0,-8]].forEach(([dx, dz]) => { const [u, v] = toMap(m.x + dx, m.z + dz); c.fillStyle = '#fff'; c.strokeStyle = '#222'; c.lineWidth = 2; c.fillRect(u - 4, v - 4, 8, 8); c.strokeRect(u - 4, v - 4, 8, 8); });
+    else if (m.t === 'spring') { c.fillStyle = '#2f7fd0'; c.strokeStyle = '#fff'; c.lineWidth = 2; c.beginPath(); c.arc(a, b, 5, 0, 7); c.fill(); c.stroke(); tag(m.x + 22, m.z, m.s); }
+    else if (m.t === 'peak') { c.fillStyle = '#c0392b'; c.beginPath(); c.moveTo(a, b - 7); c.lineTo(a + 7, b + 5); c.lineTo(a - 7, b + 5); c.fill(); tag(m.x, m.z - 16, m.s); }
+    else if (m.t === 'ab') { c.fillStyle = '#ffd54a'; c.strokeStyle = '#1c1606'; c.lineWidth = 3; c.beginPath(); c.arc(a, b, 14, 0, 7); c.fill(); c.stroke(); c.fillStyle = '#1c1606'; c.font = '900 17px Nunito, sans-serif'; c.fillText(m.s, a, b + 1); c.font = '800 15px Nunito, sans-serif'; }
+    else tag(m.x, m.z, m.s, m.c);
+  });
+  c.save(); c.translate(MW - 40, 46); c.fillStyle = '#1c2a38'; c.beginPath(); c.moveTo(0, -24); c.lineTo(10, 10); c.lineTo(0, 4); c.lineTo(-10, 10); c.fill(); c.font = '900 18px Nunito, sans-serif'; c.fillText('Х', 0, 26); c.restore();
+  const px = 100 / 660 * MW, x0 = 22, y0 = MW - 26;
+  c.fillStyle = 'rgba(255,255,255,.85)'; c.fillRect(x0 - 8, y0 - 26, px + 46, 40);
+  c.fillStyle = '#1c2a38'; c.fillRect(x0, y0, px / 2, 6); c.strokeStyle = '#1c2a38'; c.lineWidth = 1.5; c.strokeRect(x0, y0, px, 6);
+  c.font = '700 12px Nunito, sans-serif'; c.fillText('0', x0, y0 - 9); c.fillText('500 м', x0 + px/2, y0 - 9); c.fillText('1 км', x0 + px, y0 - 9);
+  const [pa, pb] = toMap(P.x, P.z);
+  c.save(); c.translate(pa, pb); c.rotate(cam.yaw); c.fillStyle = '#ffd54a'; c.strokeStyle = '#1c1606'; c.lineWidth = 2;
+  c.beginPath(); c.moveTo(0, -11); c.lineTo(8, 8); c.lineTo(0, 4); c.lineTo(-8, 8); c.closePath(); c.fill(); c.stroke(); c.restore();
+}
+
+/* ================= ТЭМДЭГЛЭЛ ================= */
+function renderJournal() {
+  $('#jList').innerHTML = ORDER.map(id => {
+    const def = REGIONS[id], R = S.reg[id];
+    return `<div class="reg-h">${def.name}</div>` + def.quests.map((Q, i) => i < R.q
+      ? `<div class="card"><div><b>${Q.fact.t}</b> <span style="color:var(--sun)">${'★'.repeat(S.qstars[id + '-' + i] || 0)}</span></div><div>${Q.fact.x}</div><div class="ref">${Q.fact.ref}</div></div>`
+      : `<div class="card lock"><b>???</b><div>«${Q.title}» даалгаврыг биелүүлбэл нээгдэнэ.</div></div>`).join('');
+  }).join('');
+}
+
+/* ================= МОНГОЛЫН ГАЗРЫН ЗУРАГ (T) ================= */
+const MN = [[87.75,49.17],[89.6,49.9],[90.7,50.4],[92.0,50.6],[93.1,50.5],[94.3,50.5],[95.0,49.95],[96.4,49.9],[97.6,49.8],[98.3,50.3],[97.9,51.0],[98.9,52.1],[99.9,51.75],[100.9,51.5],[102.1,51.4],[102.3,50.5],[103.7,50.1],[105.9,50.4],[107.0,50.0],[107.9,49.95],[108.5,49.3],[110.6,49.15],[112.0,49.5],[113.1,49.6],[114.4,50.25],[115.5,49.9],[116.7,49.85],[116.0,48.6],[115.6,47.9],[117.4,47.7],[118.5,47.9],[119.7,47.2],[119.9,46.7],[118.9,46.7],[117.4,46.6],[116.6,46.3],[115.4,45.4],[113.6,44.8],[112.6,44.9],[111.9,45.1],[111.4,44.3],[111.9,43.6],[110.4,42.8],[108.9,42.4],[107.2,42.3],[105.0,41.6],[104.0,41.8],[102.0,42.4],[100.8,42.7],[99.5,42.6],[97.2,42.8],[96.3,43.2],[95.3,44.2],[93.5,44.9],[91.0,45.2],[90.6,45.8],[91.0,46.6],[90.3,47.7],[88.9,48.1],[88.0,48.6]];
+const mx = lon => 20 + (lon - 87.5) * 19.6, my = lat => 20 + (52.4 - lat) * 28;
+let tSel = null, tFirst = false;
+function renderTravel() {
+  const svg = $('#tMap');
+  const outline = MN.map(([a, b], i) => (i ? 'L' : 'M') + mx(a).toFixed(1) + ' ' + my(b).toFixed(1)).join('') + 'Z';
+  let s = `<defs><linearGradient id="mg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5f8f4e"/><stop offset=".55" stop-color="#a7b56a"/><stop offset="1" stop-color="#d9c08a"/></linearGradient></defs>`;
+  s += `<rect x="0" y="0" width="680" height="350" rx="14" fill="#1b2b3a"/>`;
+  s += `<path d="${outline}" fill="url(#mg)" stroke="#f3ead2" stroke-width="3" stroke-linejoin="round"/>`;
+  s += `<g font-family="Nunito, sans-serif" font-weight="800">`;
+  s += `<circle cx="${mx(106.9)}" cy="${my(47.9)}" r="5" fill="#fff" stroke="#1b2b3a" stroke-width="2"/><text x="${mx(106.9) + 9}" y="${my(47.9) + 5}" font-size="14" fill="#1b2b3a">Улаанбаатар</text>`;
+  ORDER.forEach((id, k) => {
+    const def = REGIONS[id], x = mx(def.lon), y = my(def.lat), lockd = !unlocked(id), done = regionDone(id), R = S.reg[id];
+    s += `<g class="pin ${lockd ? 'lock' : ''} ${tSel === id ? 'sel' : ''}" data-reg="${id}" tabindex="0">`;
+    s += `<circle class="dot" cx="${x}" cy="${y}" r="20" fill="${done ? '#4fd28a' : lockd ? '#6b7785' : '#ffd54a'}" stroke="#1b2b3a" stroke-width="3"/>`;
+    s += `<text x="${x}" y="${y + 6}" text-anchor="middle" font-size="18" fill="#1b2b3a">${lockd ? '🔒' : done ? '✓' : k + 1}</text>`;
+    s += `<text x="${x}" y="${y + 40}" text-anchor="middle" font-size="16" fill="#fff" stroke="#1b2b3a" stroke-width="4" paint-order="stroke">${def.name} · ${R.q}/${def.quests.length}</text></g>`;
+  });
+  s += `</g>`;
+  svg.innerHTML = s;
+  const id = tSel, def = id && REGIONS[id];
+  $('#tInfo').innerHTML = def ? `<div><h4>${def.name}</h4><p>${def.desc}</p><div class="topics">${def.topics.map(t => `<span>${t}</span>`).join('')}</div></div>
+    <button class="big" id="tGo" ${unlocked(id) ? '' : 'disabled'}>${!unlocked(id) ? 'Түгжээтэй' : S.region === id && W ? 'Энд байна' : 'Аялах'}</button>` + (!unlocked(id) ? `<p style="grid-column:1/-1">${REGIONS[ORDER[ORDER.indexOf(id) - 1]].name}-ийн бүх даалгаврыг биелүүлбэл нээгдэнэ.</p>` : '')
+    : `<p>Газрын зураг дээрх цэгийг (эсвэл <kbd>1</kbd>–<kbd>3</kbd>) дарж нутгаа сонго.</p>`;
+  $('#tClose').hidden = tFirst;
+}
+function selRegion(id) { tSel = id; renderTravel(); }
+function goRegion(id) {
+  if (!unlocked(id)) return;
+  if (!(S.region === id && W)) { loadRegion(id, true); toast(`${REGIONS[id].name} руу аяллаа! Толгой дээрээ «!» тэмдэгтэй хүнтэй ярь.`); }
+  tFirst = false; closePanel('travel');
+}
+$('#tMap').addEventListener('click', e => { const g = e.target.closest('[data-reg]'); if (g) selRegion(g.dataset.reg); });
+$('#tInfo').addEventListener('click', e => { if (e.target.closest('#tGo')) goRegion(tSel); });
+$('#tClose').onclick = () => closePanel('travel');
+
+/* ================= САМБАРУУД ================= */
+const PANELS = ['mapView', 'journal', 'shop', 'travel'];
+const panelOpen = () => PANELS.some(p => !$('#' + p).hidden);
+const uiOpen = () => D.open || panelOpen() || !$('#start').hidden || !$('#finale').hidden;
+function openPanel(id) {
+  PANELS.forEach(p => $('#' + p).hidden = p !== id);
+  unlock(); setBinoc(false); keys.clear();
+  if (id === 'mapView') { drawMap(); W.mapOpened(); }
+  if (id === 'journal') renderJournal();
+  if (id === 'shop') renderShop();
+  if (id === 'travel') { tSel = tSel || S.region || 'hangai'; renderTravel(); }
+}
+function closePanel(id) { if (id === 'travel' && tFirst) return; $('#' + id).hidden = true; if (!uiOpen()) lock(); }
+function togglePanel(id) { $('#' + id).hidden ? openPanel(id) : closePanel(id); }
+document.querySelectorAll('[data-close]').forEach(b => b.onclick = () => closePanel(b.dataset.close));
+function showFinale() {
+  PANELS.forEach(p => $('#' + p).hidden = true);
+  $('#fStars').textContent = `Түвшин ${levelOf(S.earned) + 1} · ${LEVELS[levelOf(S.earned)][1]} · ${S.earned} ★`;
+  $('#finale').hidden = false; unlock();
+}
+$('#fJournal').onclick = () => { $('#finale').hidden = true; openPanel('journal'); };
+$('#fWalk').onclick = () => { $('#finale').hidden = true; lock(); };
+$('#fRestart').onclick = () => { try { localStorage.removeItem(SAVE_KEY); } catch (e) {} location.reload(); };
+
+/* ================= ХУЛГАНА (pointer lock) ================= */
+const locked = () => document.pointerLockElement === canvas;
+let lockFailed = false;
+function lock() {
+  if (!started || locked() || uiOpen() || !canvas.requestPointerLock) return;
+  try { const p = canvas.requestPointerLock(); if (p && p.catch) p.catch(() => { lockFailed = true; updatePause(); }); } catch (e) { lockFailed = true; }
+}
+function unlock() { if (locked()) document.exitPointerLock(); }
+function updatePause() { $('#pause').hidden = !started || locked() || uiOpen(); }
+document.addEventListener('pointerlockchange', () => { if (!locked()) { keys.clear(); setBinoc(false); } updatePause(); });
+document.addEventListener('pointerlockerror', () => { lockFailed = true; updatePause(); });
+$('#pause').onclick = () => lock();
+canvas.addEventListener('mousedown', e => {
+  if (!locked()) { lock(); drag = { x: e.clientX, y: e.clientY }; }
+  else if (e.button === 2 && S.owned.binoc) setBinoc(true);
+});
+addEventListener('mouseup', e => { drag = null; if (e.button === 2 && binocHold) setBinoc(false); });
+addEventListener('mousemove', e => {
+  if (D.open || panelOpen()) return;
+  if (locked()) { cam.yaw += e.movementX * (binoc ? .0007 : .0026); cam.pitch = Math.max(.05, Math.min(1.25, cam.pitch + e.movementY * (binoc ? .0006 : .0022))); }
+  else if (drag) { cam.yaw += (e.clientX - drag.x) * .006; cam.pitch = Math.max(.05, Math.min(1.25, cam.pitch + (e.clientY - drag.y) * .004)); drag = { x: e.clientX, y: e.clientY }; }
+});
+canvas.addEventListener('contextmenu', e => e.preventDefault());
+canvas.addEventListener('wheel', e => { cam.dist = Math.max(5, Math.min(40, cam.dist * (e.deltaY > 0 ? 1.1 : .9))); e.preventDefault(); }, { passive: false });
+let binoc = false, binocHold = false, drag = null;
+function setBinoc(on) {
+  binoc = !!on && !!S.owned.binoc; binocHold = binoc && !!on;
+  $('#binoc').hidden = !binoc; $('#cross').hidden = !binoc;
+  if (player) player.g.visible = !binoc;
+}
+
+/* ================= ГАР ================= */
+const keys = new Set();
+let started = false;
+addEventListener('keydown', e => {
+  if (!started) return;
+  const c = e.code, num = /^(Digit|Numpad)([1-4])$/.exec(c);
+  if (D.open) {
+    if (performance.now() - D.at < 180) return;
+    if (D.onOpt && num) { D.onOpt(+num[2] - 1); e.preventDefault(); }
+    else if (D.onNext && (c === 'Enter' || c === 'NumpadEnter' || c === 'Space' || c === 'KeyE')) { D.onNext(); e.preventDefault(); }
+    return;
+  }
+  if (!$('#finale').hidden) return;
+  if (!$('#travel').hidden) {
+    if (num && +num[2] <= 3) selRegion(ORDER[+num[2] - 1]);
+    else if ((c === 'Enter' || c === 'NumpadEnter') && tSel) goRegion(tSel);
+    else if (c === 'KeyT' || c === 'Escape') closePanel('travel');
+    return;
+  }
+  if (c === 'KeyM') return togglePanel('mapView');
+  if (c === 'KeyJ') return togglePanel('journal');
+  if (c === 'KeyB') return togglePanel('shop');
+  if (c === 'KeyT') return openPanel('travel');
+  if (c === 'Escape') { PANELS.forEach(p => { if (!$('#' + p).hidden) closePanel(p); }); return; }
+  if (panelOpen()) return;
+  if (c === 'KeyE' && nearI && !busy) { run(nearI.act); return; }
+  if (c === 'KeyZ') { if (S.owned.binoc) setBinoc(!binoc); else toast('Дуран алга байна. B дарж дэлгүүрээс аваарай.'); return; }
+  if (c === 'Space') e.preventDefault();
+  keys.add(c);
+});
+addEventListener('keyup', e => keys.delete(e.code));
+addEventListener('blur', () => keys.clear());
+$('#dNext').onclick = () => D.onNext && D.onNext();
+
+function begin(s) {
+  S = s || fresh();
+  ['hangai', 'gobi', 'khuvsgul'].forEach(id => { S.reg[id] = S.reg[id] || freshReg(); S.found[id] = S.found[id] || []; });
+  buildPlayer();
+  $('#start').hidden = true; $('#hud').hidden = false; started = true;
+  if (S.region) { loadRegion(S.region, false); if (ORDER.every(regionDone)) showFinale(); else lock(); }
+  else { tFirst = true; tSel = 'hangai'; openPanel('travel'); }
+  renderStats();
+}
+$('#bNew').onclick = () => begin(null);
+const saved = loadSave();
+if (saved && saved.region) { $('#bCont').hidden = false; $('#bCont').onclick = () => begin(saved); }
+
+/* ================= ГОЛ ДАВТАЛТ ================= */
+const clock = new THREE.Clock();
+let hudT = 0, t = 0, warnT = 0, nearI = null, saveT = 0;
+function resize() { renderer.setSize(innerWidth, innerHeight, false); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); }
+addEventListener('resize', resize); resize();
+// урьдчилан харагдах дэвсгэр (эхлэлийн цонхны ард)
+W = { def: REGIONS.hangai, npc: {}, inter: [], talk: {}, tick: () => {}, marks: () => [], distFrom: () => null, mapOpened: () => {}, stars: [] };
+S.region = 'hangai'; W.HG = buildTerrain(REGIONS.hangai); buildWater(REGIONS.hangai); S.region = null;
+
+function step(dt) {
+  t += dt;
+  const def = W.def;
+  let mx2 = 0, mz2 = 0;
+  const active = started && !uiOpen();
+  if (active) {
+    const fx = Math.sin(cam.yaw), fz = -Math.cos(cam.yaw), rx = Math.cos(cam.yaw), rz = Math.sin(cam.yaw);
+    if (keys.has('KeyW') || keys.has('ArrowUp')) { mx2 += fx; mz2 += fz; }
+    if (keys.has('KeyS') || keys.has('ArrowDown')) { mx2 -= fx; mz2 -= fz; }
+    if (keys.has('KeyD') || keys.has('ArrowRight')) { mx2 += rx; mz2 += rz; }
+    if (keys.has('KeyA') || keys.has('ArrowLeft')) { mx2 -= rx; mz2 -= rz; }
+    if (keys.has('Space') && P.jump === 0) { P.vy = 9; P.jump = .001; }
+  }
+  const len = Math.hypot(mx2, mz2), gy0 = groundY(P.x, P.z), L0 = lakeAt(P.x, P.z), wet = L0 && gy0 < L0.y - .4;
+  warnT -= dt;
+  if (len > 0 && !binoc) {
+    mx2 /= len; mz2 /= len;
+    const sp = (keys.has('ShiftLeft') || keys.has('ShiftRight') ? 19 : 10) * (wet ? .5 : 1) * (S.equip.mount === 'horse' ? 1.7 : 1);
+    const nx = Math.max(-325, Math.min(325, P.x + mx2 * sp * dt)), nz = Math.max(-325, Math.min(325, P.z + mz2 * sp * dt));
+    const ng = groundY(nx, nz), L1 = lakeAt(nx, nz), na = altOf(ng);
+    let block = L1 && ng < L1.y - 2.6 ? 'deep' : null;
+    if (!block && ng > gy0) {
+      if (def.bootsAlt && na > def.bootsAlt && !S.owned.boots) block = 'boots';
+      else if (def.coldAlt && na > def.coldAlt && !S.owned.jacket) block = 'cold';
+    }
+    if (!block) { S.walk += Math.hypot(nx - P.x, nz - P.z) * M_PER_U; P.x = nx; P.z = nz; }
+    else if (warnT <= 0 && block !== 'deep') { warnT = 3; toast(block === 'boots' ? `${def.bootsAlt} м-ээс дээш энгэр эгц, гулгамтгай байна. «Уулын гутал» хэрэгтэй (B).` : `${def.coldAlt} м-ээс дээш хэт хүйтэн байна! «Дулаан хүрэм» хэрэгтэй (B).`); }
+    const want = Math.atan2(mx2, mz2);
+    P.face += (((want - P.face + Math.PI * 3) % (Math.PI * 2)) - Math.PI) * Math.min(1, dt * 12);
+    P.walkT += dt * sp * 1.1;
+  }
+  P.moving += ((len > 0 && !binoc ? 1 : 0) - P.moving) * Math.min(1, dt * 10);
+  const gy = groundY(P.x, P.z), L = lakeAt(P.x, P.z);
+  const wy = L && gy < L.y - .4 ? Math.max(gy, L.y - 1.1) : gy;
+  if (P.jump > 0) { P.jump += P.vy * dt; P.vy -= 26 * dt; if (P.jump <= 0) { P.jump = 0; P.vy = 0; } }
+  P.y = wy + P.jump;
+  if (player) {
+    player.g.position.set(P.x, P.y, P.z); player.g.rotation.y = P.face;
+    if (horse) { walkQuad(horse, P.walkT * .6, P.moving); player.legs[0].rotation.x = player.legs[1].rotation.x = -1.2; player.legs[0].rotation.z = .35; player.legs[1].rotation.z = -.35; }
+    else animChar(player, P.walkT, P.moving);
+  }
+
+  // камер
+  const head = (horse ? 3.6 : 2.1);
+  if (binoc) {
+    camera.fov += (12 - camera.fov) * Math.min(1, dt * 10);
+    const lp = .3 - cam.pitch, cp = Math.cos(lp);
+    camera.position.set(P.x, P.y + head, P.z);
+    camera.lookAt(P.x + Math.sin(cam.yaw) * cp * 10, P.y + head + Math.sin(lp) * 10, P.z - Math.cos(cam.yaw) * cp * 10);
+  } else {
+    camera.fov += (60 - camera.fov) * Math.min(1, dt * 10);
+    const cp = Math.cos(cam.pitch), sp2 = Math.sin(cam.pitch), tx = P.x, ty = P.y + 2 + (horse ? 1.3 : 0), tz = P.z;
+    const cx = tx - Math.sin(cam.yaw) * cam.dist * cp, cz = tz + Math.cos(cam.yaw) * cam.dist * cp;
+    camera.position.set(cx, Math.max(ty + cam.dist * sp2, groundY(cx, cz) + 1.2), cz);
+    camera.lookAt(tx, ty, tz);
+  }
+  camera.updateProjectionMatrix();
+  sun.position.set(P.x + 60, P.y + 110, P.z + 40); sun.target.position.set(P.x, P.y, P.z);
+
+  if (started && S.region) {
+    const R = reg();
+    Object.values(W.npc).forEach((n, i) => { n.mark.position.y = 3.6 + Math.sin(t * 3 + i) * .15; });
+    W.tick(dt, t);
+    // нуугдмал од
+    W.stars.forEach(s => {
+      if (!s.m.visible) return;
+      s.m.rotation.y += dt * 2; s.m.position.y = groundY(s.x, s.z) + 1.6 + Math.sin(t * 2 + s.i) * .3;
+      if (Math.hypot(P.x - s.x, P.z - s.z) < 2.6) { s.m.visible = false; S.found[S.region].push(s.i); addStars(1); toast(`Нуугдмал од олдлоо! +1 ★ (${S.found[S.region].length}/${def.stars.length})`); save(); }
+    });
+    // туяа
+    let tg = null;
+    for (const id in W.npc) if (def.needsTalk(id, R)) { tg = W.npc[id].c.g.position; break; }
+    if (!tg) tg = def.target(R);
+    beacon.visible = !!tg && !binoc;
+    if (tg) { beacon.position.set(tg.x, groundY(tg.x, tg.z) + 45, tg.z); beacon.material.opacity = .22 + Math.sin(t * 3) * .1; }
+    // ойрын харилцах цэг
+    nearI = null; let best = 1e9;
+    if (!uiOpen() && !busy) W.inter.forEach(it => { const p = it.pos(), d = Math.hypot(P.x - p.x, P.z - p.z), l = it.label(); if (l && d < it.r && d < best) { best = d; nearI = it; } });
+    const pr = $('#prompt');
+    if (nearI && !binoc) { pr.hidden = false; pr.innerHTML = `<kbd>E</kbd> ${nearI.label()}`; } else pr.hidden = true;
+    hudT -= dt;
+    if (hudT <= 0) {
+      hudT = .1;
+      $('#sAlt').textContent = altOf(gy) + ' м';
+      const df = W.distFrom();
+      $('#sDistRow').hidden = !df;
+      if (df) $('#sDist').textContent = km(Math.hypot(P.x - df.x, P.z - df.z));
+      updateCompass(cam.yaw * 180 / Math.PI);
+      if (!$('#mapView').hidden) drawMap();
+      updatePause();
+    }
+    saveT += dt; if (saveT > 3) { saveT = 0; save(); }
+  } else beacon.visible = false;
+}
+function loop() {
+  step(Math.min(clock.getDelta(), .05));
+  renderer.render(scene, camera);
+  requestAnimationFrame(loop);
+}
+$('#loading').hidden = true;
+$('#start').hidden = false;
+loop();
+</script>
+</body>
+</html>
