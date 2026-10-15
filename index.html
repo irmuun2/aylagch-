@@ -2,7 +2,15 @@
 <html lang="mn">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0e1620">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Аялагч">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
 <title>Газарзүйч аялагч</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -181,7 +189,8 @@ html.rot #toast{max-width:90vh}
 #tJump{right:calc(136px + env(safe-area-inset-right, 0px));bottom:calc(26px + env(safe-area-inset-bottom, 0px));width:66px;height:66px}
 #tRun{right:calc(136px + env(safe-area-inset-right, 0px));bottom:calc(104px + env(safe-area-inset-bottom, 0px));width:66px;height:66px}
 #tRun.on{background:var(--ok);color:#06210f}
-#tMenu{position:absolute;right:calc(10px + env(safe-area-inset-right, 0px));top:var(--menuTop,120px);display:flex;gap:6px;pointer-events:auto}
+#tMenu{position:absolute;left:calc(12px + env(safe-area-inset-left, 0px));top:36%;display:flex;gap:8px;pointer-events:auto}
+#tbBino{right:calc(30px + env(safe-area-inset-right, 0px));top:34%;width:62px;height:62px;font-size:28px}
 #tMenu button{width:44px;height:44px;border-radius:14px;border:2px solid rgba(255,255,255,.25);background:rgba(18,28,40,.7);font-size:22px;touch-action:none;padding:0}
 html.touch #keys,html.touch #bag,html.touch .ctrls{display:none!important}
 html.touch #quest{width:min(240px,33vw);padding:7px 10px}
@@ -189,7 +198,14 @@ html.touch #quest h2{font-size:15px;margin:1px 0 4px}
 html.touch #quest ul{font-size:12px;gap:2px}
 html.touch #quest .topic{font-size:9px}
 html.touch #quest .prog{margin-top:5px}
-html.touch #stats{min-width:0;padding:6px 10px;gap:1px;max-width:34vw}
+html.touch,html.touch body{touch-action:manipulation;-webkit-touch-callout:none}
+.tbtn,#tMenu button,#qBtn,#trophy{-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
+#trophy{display:none}
+html.touch #trophy{display:grid;position:fixed;top:8px;right:calc(8px + env(safe-area-inset-right, 0px));z-index:13;width:46px;height:46px;border-radius:50%;border:2px solid var(--sun);background:var(--panel);font-size:24px;place-items:center;padding:0;pointer-events:auto;user-select:none;-webkit-user-select:none}
+html.touch #trophy small{position:absolute;left:-8px;bottom:-6px;font:900 11px/1 var(--f-body);background:var(--sun);color:#1c1606;border-radius:999px;padding:3px 6px;white-space:nowrap}
+html.touch #trophy.pulse{animation:qpulse 1s ease-in-out 3}
+html.touch #stats{display:none;top:62px;right:calc(8px + env(safe-area-inset-right, 0px));z-index:13;pointer-events:auto;min-width:0;padding:8px 12px;gap:2px;max-width:min(260px,60%)}
+html.touch #stats.open{display:grid}
 html.touch #stats .row{font-size:11px;gap:8px}
 html.touch #stats .row b{font-size:12px}
 html.touch #stats .lvl{font-size:11px;padding-bottom:2px}
@@ -222,6 +238,7 @@ html.touch .big{padding:10px 20px;font-size:16px}
   <div id="heading"></div>
   <button id="qBtn" aria-label="Даалгавар">?<small id="qProg"></small></button>
   <div id="quest" class="panel"></div>
+  <button id="trophy" aria-label="Түвшин ба од">🏆<small id="trophyN">0★</small></button>
   <div id="stats" class="panel">
     <div class="lvl" id="sLvl"></div>
     <div class="row hi"><span>Од</span><b id="sStars">0</b></div>
@@ -248,12 +265,12 @@ html.touch .big{padding:10px 20px;font-size:16px}
     <button class="tbtn off" id="tAct"><span>✋</span>Хийх</button>
     <button class="tbtn" id="tJump">Үсрэх</button>
     <button class="tbtn" id="tRun">Гүйх</button>
+    <button class="tbtn" id="tbBino" aria-label="Дуран" hidden>🔭</button>
     <div id="tMenu">
       <button id="tbMap" aria-label="Газрын зураг">🗺️</button>
       <button id="tbShop" aria-label="Дэлгүүр">🛒</button>
       <button id="tbJour" aria-label="Аяллын тэмдэглэл">📖</button>
       <button id="tbTravel" aria-label="Монголын зургаар аялах">🧭</button>
-      <button id="tbBino" aria-label="Дуран">🔭</button>
     </div>
   </div>
   <div id="cross" hidden></div>
@@ -1317,6 +1334,8 @@ function updateCompass(head) {
   $('#heading').textContent = 'Чиглэл: ' + DIR_FULL[DIRS[Math.round(h / 45) % 8][1]] + ' · ' + Math.round(h) + '°';
 }
 let questKey = '';
+$('#trophy').addEventListener('click', e => { e.stopPropagation(); $('#stats').classList.toggle('open'); $('#trophy').classList.remove('pulse'); });
+$('#stats').addEventListener('click', () => $('#stats').classList.remove('open'));
 $('#qBtn').addEventListener('click', e => { e.stopPropagation(); $('#quest').classList.toggle('open'); $('#qBtn').classList.remove('pulse'); });
 $('#quest').addEventListener('click', () => $('#quest').classList.remove('open'));
 function renderQuest() {
@@ -1335,6 +1354,7 @@ function renderStats() {
   $('#sLvl').innerHTML = `Түвшин ${li + 1} · ${LEVELS[li][1]}<small>${nx ? `Дараагийн түвшин: ${nx[0] - S.earned} од` : 'Хамгийн дээд түвшин!'}</small><div class="xp"><i style="width:${nx ? (S.earned - LEVELS[li][0]) / (nx[0] - LEVELS[li][0]) * 100 : 100}%"></i></div>`;
   $('#sStars').textContent = S.wallet + ' ★';
   if (W && S.region) $('#sHidden').textContent = S.found[S.region].length + '/' + W.def.stars.length;
+  if ($('#trophyN')) { const n = S.wallet + '★'; if (TOUCH && $('#trophyN').textContent !== n && started) { const b = $('#trophy'); b.classList.remove('pulse'); void b.offsetWidth; b.classList.add('pulse'); } $('#trophyN').textContent = n; $('#tbBino').hidden = !S.owned.binoc; }
   $('#bag').innerHTML = ITEMS.filter(i => S.owned[i.id]).map(i => `<span title="${i.name}">${i.icon}</span>`).join('') || '<span title="Цүнх хоосон">🎒</span>';
 }
 let toastT;
@@ -1606,7 +1626,7 @@ if (TOUCH) {
   addEventListener('touchend', endT); addEventListener('touchcancel', endT);
   const tap = (sel, fn) => $(sel).addEventListener('touchstart', e => { e.preventDefault(); e.stopPropagation(); fn(); }, { passive: false });
   tap('#tAct', () => { if (nearI && !busy && !uiOpen()) run(nearI.act); });
-  tap('#tJump', () => { if (P.jump === 0 && !uiOpen()) { P.vy = 9; P.jump = .001; } });
+  tap('#tJump', () => { if (uiOpen()) return; if (P.jump === 0) { P.vy = 9; P.jump = .001; } else P.jumpQ = performance.now(); });
   tap('#tRun', () => { runOn = !runOn; $('#tRun').classList.toggle('on', runOn); });
   tap('#tbMap', () => togglePanel('mapView'));
   tap('#tbShop', () => togglePanel('shop'));
@@ -1717,7 +1737,7 @@ function step(dt) {
     if (keys.has('Space') && P.jump === 0) { P.vy = 9; P.jump = .001; }
     if (TOUCH && Math.hypot(joy.x, joy.y) > .15) { mx2 += fx * -joy.y + rx * joy.x; mz2 += fz * -joy.y + rz * joy.x; }
   }
-  if (TOUCH) { const show = started && !uiOpen(); if (show !== touchShown) { touchShown = show; $('#touchUI').hidden = !show; } if (show) { const st = $('#stats'), b = st.offsetTop + st.offsetHeight + 8; if (Math.abs(b - (P.menuTop || 0)) > 1) { P.menuTop = b; $('#tMenu').style.setProperty('--menuTop', b + 'px'); } } }
+  if (TOUCH) { const show = started && !uiOpen(); if (show !== touchShown) { touchShown = show; $('#touchUI').hidden = !show; } }
   const len = Math.hypot(mx2, mz2), gy0 = groundY(P.x, P.z), L0 = lakeAt(P.x, P.z), wet = L0 && gy0 < L0.y - .4;
   warnT -= dt;
   if (len > 0 && !binoc) {
@@ -1739,7 +1759,7 @@ function step(dt) {
   P.moving += ((len > 0 && !binoc ? 1 : 0) - P.moving) * Math.min(1, dt * 10);
   const gy = groundY(P.x, P.z), L = lakeAt(P.x, P.z);
   const wy = L && gy < L.y - .4 ? Math.max(gy, L.y - 1.1) : gy;
-  if (P.jump > 0) { P.jump += P.vy * dt; P.vy -= 26 * dt; if (P.jump <= 0) { P.jump = 0; P.vy = 0; } }
+  if (P.jump > 0) { P.jump += P.vy * dt; P.vy -= 26 * dt; if (P.jump <= 0) { P.jump = 0; P.vy = 0; if (P.jumpQ && performance.now() - P.jumpQ < 250) { P.vy = 9; P.jump = .001; } P.jumpQ = 0; } }
   P.y = wy + P.jump;
   if (player) {
     player.g.position.set(P.x, P.y, P.z); player.g.rotation.y = P.face;
@@ -1805,6 +1825,8 @@ function loop() {
   renderer.render(scene, camera);
   requestAnimationFrame(loop);
 }
+// Апп болгон суулгасан үед интернэтгүй ажиллахад (http/https дээр л)
+if ('serviceWorker' in navigator && /^https?:/.test(location.protocol)) navigator.serviceWorker.register('sw.js').catch(() => {});
 $('#loading').hidden = true;
 $('#start').hidden = false;
 loop();
