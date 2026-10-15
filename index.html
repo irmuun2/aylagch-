@@ -347,7 +347,7 @@ html.touch .big{padding:10px 20px;font-size:16px}
 <div id="start" class="overlay" hidden>
   <div class="box panel">
     <h1>Газарзүйч аялагч</h1>
-    <p>Монгол орны гурван нутгаар аялж, нутгийн хүмүүсийн даалгаврыг биелүүлээрэй. Цуглуулсан одоороо аяллын хэрэгсэл, хувцас авч, дүрээ хөгжүүлнэ. Даалгавар бүр 7-р ангийн газар зүйн нэг сэдэвтэй.</p>
+    <p>Монгол орны дөрвөн газраар аялж, нутгийн хүмүүсийн даалгаврыг биелүүлээрэй. Цуглуулсан одоороо аяллын хэрэгсэл, хувцас авч, дүрээ хөгжүүлнэ. Даалгавар бүр 7-р ангийн газар зүйн нэг сэдэвтэй.</p>
     <p class="tHint" hidden style="font-size:14px;color:var(--muted)">Утсаар тоглохдоо: зүүн доод дугуйгаар алхана, дэлгэцийг хуруугаараа шударч эргэж харна, шар ✋ товчоор ярина. Утсаа <b style="color:var(--sun)">хэвтээ</b> барьвал илүү тохиромжтой.</p>
     <div class="ctrls">
       <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / сум</span><span>Алхах (<kbd>Shift</kbd> гүйх, <kbd>Space</kbd> үсрэх)</span>
@@ -369,7 +369,7 @@ html.touch .big{padding:10px 20px;font-size:16px}
   <div class="box panel">
     <h1>Баяр хүргэе, агуу аялагч!</h1>
     <div class="stars" id="fStars"></div>
-    <p>Та Монгол орны гурван нутагт бүх даалгаврыг биелүүлж, аяллын тэмдэглэлээ бүрэн дүүргэлээ.</p>
+    <p>Та Монгол орны дөрвөн газарт бүх даалгаврыг биелүүлж, аяллын тэмдэглэлээ бүрэн дүүргэлээ.</p>
     <div class="btns">
       <button class="big" id="fJournal">Тэмдэглэл үзэх</button>
       <button class="big ghost" id="fWalk">Үргэлжлүүлэн аялах</button>
@@ -1307,7 +1307,269 @@ REGIONS.khuvsgul = (() => {
   }
   return def;
 })();
-const ORDER = ['hangai', 'gobi', 'khuvsgul'];
+/* ---------- 4. УЛААНБААТАР ХОТ ---------- */
+REGIONS.ub = (() => {
+  const TUUL = [[-330,150],[-220,140],[-120,128],[-40,122],[40,124],[130,132],[230,140],[330,150]];
+  const PLAZA = { x: 0, z: -40 };
+  const T = { air: { x: 255, z: 40, name: 'Нисэх буудал', ok: true }, rail: { x: -235, z: 4, name: 'Төмөр замын буудал' }, bus: { x: 64, z: -112, name: 'Автобусны буудал' } };
+  const HOSP = { x: 82, z: -66 }, SITE = { x: 104, z: 34 }, UNI = { x: -86, z: -72 };
+  const ZONE = { center: { x: 22, z: -40, name: 'Хотын төв' }, edge: { x: -40, z: -188, name: 'Хотын зах' } };
+  const MEAS = { x: 14, z: -24 };
+  const def = {
+    id: 'ub', name: 'Улаанбаатар хот', lon: 106.9, lat: 47.92, baseAlt: 1351, sky: 0xa9cdea, ground: 0x6f7f5a,
+    desc: 'Туул голын хөндийд орших нийслэл хот. Хотжилт, хүн амын нягтшил, тээвэр, өндрийн температурыг судална.',
+    topics: ['Хотжилт', 'Хүн амын нягтшил', 'Тээвэр', 'Өндөр ба температур'],
+    camp: { x: 0, z: -24 }, spawn: { x: 0, z: -12 }, bootsAlt: 1700, contour: 10, lakes: [], rivers: [TUUL],
+    stars: [[-290,-60],[300,-120],[-150,250],[170,230],[-300,240],[60,-280]],
+    H(x, z) {
+      let h = .8*Math.sin(x*.02)*Math.cos(z*.017) + .4*Math.sin(x*.05 + 1)*Math.sin(z*.04);
+      h += Math.max(0, -z - 110) * .09 + 10*g2(x,z,-130,-270,70) + 12*g2(x,z,130,-280,80);
+      h += 110*g2(x,z,0,268,66) + 32*g2(x,z,-170,255,60) + 36*g2(x,z,170,258,60);
+      const w = Math.min(1, g2(x,z,0,-20,140) * 1.5); h = h*(1 - w);
+      const d = polyDist(TUUL, x, z); h -= 2.2*Math.exp(-d*d/40);
+      return h;
+    },
+    color(x, z, h) {
+      if (polyDist(TUUL, x, z) < 4) return cA.set(0xb8a479);
+      if (h > 70) return mix(0x8d8478, 0xd7d9d2, (h - 70) / 22);
+      if (h > 14 && z > 150) return mix(0x3f6b3a, 0x7d8b5c, (h - 14) / 56);
+      const city = g2(x, z, 0, -30, 150);
+      return mix(0x8fae5e, 0x9a9a8a, city * 1.3);
+    },
+    quests: [
+      { title: 'Яагаад хот руу нүүдэг вэ?', topic: '7.4 · Хотжилт', fact: { t: 'Хотжилт', ref: 'СБ 82–83-р тал', x: 'Хотод амьдрах хүний тоо өсөхийг <b>хотжилт</b> гэнэ. Хотод хүн олшироход нөлөөлөх чухал хүчин зүйл бол <b>шилжих хөдөлгөөн</b>: их, дээд сургуульд сурах, эрүүл мэндийн тусламжид ойр байх, хөдөөд хомс ажлын байр, тав тухтай орчин. 2010 онд дэлхийд хотын хүн ам (50.8%) анх удаа хөдөөгийнхөөс давсан. 1 саяас дээш хүн амтай хотыг <b>саятан хот</b> гэнэ.' } },
+      { title: 'Хотын төв ба зах', topic: '7.3 · Хүн амын нягтшил', fact: { t: 'Хүн амын нягтшил', ref: 'СБ 81-р тал', x: 'Хүмүүс дэлхий даяар жигд биш тархсан. <b>Том хот суурин</b> газар хүн амын нягтшил маш их, алслагдсан жижиг суурин газар маш бага байна. Сүүлийн 100 жилд хүн амын тархалт, нягтшилд ихээхэн өөрчлөлт гарсан.' } },
+      { title: 'Яаралтай ачаа', topic: '7.7 · Аж үйлдвэр, тээвэр', fact: { t: 'Тээвэр ба хөгжил', ref: 'СБ 98–99-р тал', x: 'Хүмүүс зорьсон газрын <b>хол, ойр</b>, зам нь <b>саад бартаатай</b> эсэхээс шалтгаалан тээврийн хэрэгслээ сонгодог. Зорих газар хэт хол бол <b>агаарын</b>, их хэмжээний, овор ихтэй ачааг хямд тээвэрлэх бол <b>усан замын</b> тээврийг сонгоно. Монгол Улс <b>хөгжиж буй орон</b>-ы бүлэгт багтдаг: гол салбар нь хөдөө аж ахуй, уул уурхай.' } },
+      { title: 'Богд хан уулын сэрүүн', topic: '4.1 · Өндөр ба температур', fact: { t: 'Өндөр ба температур', ref: 'СБ 32-р тал, 4.1 Дасгал 1', x: 'Улаанбаатар далайн түвшнээс дээш <b>1351 м</b> өндөрт оршдог. Газрын гадаргаас <b>100 м</b> өгсөх тусам агаарын температур <b>0,6°C</b>-аар буурна. Тиймээс хотод 21°C байхад Богд хан уулын Цэцээ гүн оргилд (2268 м) 15,5°C орчим байна.' } },
+    ],
+  };
+  let PEAK, cars = [], bldMat, cnt = { center: 0, edge: 0, hh: 0 };
+  def.init = () => {
+    const R = reg(); R.d.reasons = R.d.reasons || {}; R.d.zones = R.d.zones || {};
+    const y0 = x => groundY(x[0], x[1]);
+    const solid = W.solid = [];
+    // ---- зам
+    const road = (x, z, w, l, rot) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, l), mat(0x3b3f45, { flatShading: false })); m.rotation.x = -Math.PI / 2; m.rotation.z = rot || 0; m.position.set(x, groundY(x, z) + .06, z); m.receiveShadow = true; add(m); };
+    road(0, -40, 520, 9);                // өргөн чөлөө (зүүнээс баруун)
+    road(0, -30, 9, 300, 0);             // хойноос урагш
+    road(-40, -110, 220, 7); road(60, 30, 260, 7);
+    // гүүр
+    { const z = 125, b = new THREE.Mesh(new THREE.BoxGeometry(11, .6, 26), mat(0x8b8f96)); b.position.set(0, groundY(0, 110) + .35, z); add(shadowAll(b)); road(0, 175, 9, 70, 0); }
+    // талбай
+    { const p = new THREE.Mesh(new THREE.CircleGeometry(20, 32), mat(0xc9c2b0, { flatShading: false })); p.rotation.x = -Math.PI / 2; p.position.set(PLAZA.x, groundY(PLAZA.x, PLAZA.z) + .08, PLAZA.z); add(p);
+      const f = new THREE.Mesh(new THREE.CylinderGeometry(3, 3.4, .8, 20), mat(0x9aa3ad)); f.position.set(PLAZA.x, groundY(PLAZA.x, PLAZA.z) + .4, PLAZA.z); add(f);
+      const wtr = new THREE.Mesh(new THREE.CircleGeometry(2.6, 20), mat(0x6cc3ff, { flatShading: false })); wtr.rotation.x = -Math.PI / 2; wtr.position.set(PLAZA.x, groundY(PLAZA.x, PLAZA.z) + .85, PLAZA.z); add(wtr);
+      const l = label('Төв талбай', { h: 1.3 }); l.position.set(PLAZA.x, groundY(PLAZA.x, PLAZA.z) + 5, PLAZA.z); add(l); }
+    // ---- барилгууд (InstancedMesh, өнгө тус бүр)
+    const B = [];
+    const near = (x, z, list, r) => list.some(p => Math.abs(x - p.x) < r && Math.abs(z - p.z) < r);
+    const keep = [PLAZA, HOSP, SITE, UNI, T.bus, ZONE.center, MEAS, { x: 0, z: -24 }, { x: -16, z: -52 }, { x: 8, z: -26 }, { x: -10, z: -26 }];
+    for (let gx = -7; gx <= 7; gx++) for (let gz = -5; gz <= 4; gz++) {
+      const x = gx * 22 + 11 * (gz % 2 ? 1 : 0) * 0, z = -40 + gz * 20;
+      if (Math.abs(z + 40) < 12 || Math.abs(x) < 10 || Math.abs(z + 110) < 9 || Math.abs(z - 30) < 9) continue;
+      if (near(x, z, keep, 16)) continue;
+      const dc = Math.hypot(x, (z + 40) * 1.3), f = Math.max(0, 1 - dc / 170);
+      if (rnd() > .35 + f) continue;
+      const w = 9 + rnd() * 6, d = 8 + rnd() * 6, h = 3.5 + f * f * 13 + rnd() * 4 * f;
+      B.push([x, z, w, d, h]);
+    }
+    // орон сууцны хороолол (5 давхар)
+    for (let t = 0; t < 900 && B.length < 260 * QUALITY + 60; t++) {
+      const a = rnd() * Math.PI * 2, r = 120 + rnd() * 60, x = Math.cos(a) * r * 1.3, z = -30 + Math.sin(a) * r * .8;
+      if (z > 95 || z < -125 || Math.abs(x) < 8 || Math.abs(z + 40) < 9 || near(x, z, [T.air, T.rail, T.bus, SITE], 40)) continue;
+      if (B.some(b => Math.abs(b[0] - x) < 14 && Math.abs(b[1] - z) < 12)) continue;
+      B.push([x, z, 12, 7, 4 + rnd() * 2]);
+    }
+    const bm = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), bldMat = mat(0xffffff, { emissive: 0xffd27a, emissiveIntensity: 0 }), B.length), o = new THREE.Object3D(), col = new THREE.Color();
+    const PAL = [0xd8d2c4, 0xc9b79c, 0xa9b4c2, 0xe0dccf, 0x9fb3a6, 0xc4a28a, 0x8fa3b8];
+    B.forEach(([x, z, w, d, h], i) => {
+      const y = groundY(x, z); o.position.set(x, y + h / 2, z); o.scale.set(w, h, d); o.rotation.set(0, 0, 0); o.updateMatrix(); bm.setMatrixAt(i, o.matrix);
+      bm.setColorAt(i, col.set(PAL[i % PAL.length])); solid.push([x - w / 2 - .7, x + w / 2 + .7, z - d / 2 - .7, z + d / 2 + .7]);
+      if (Math.hypot(x - ZONE.center.x, z - ZONE.center.z) < 50) { cnt.center++; cnt.hh += Math.max(5, Math.round(h * 10 / 3)) * 4; }
+    });
+    bm.castShadow = bm.receiveShadow = true; add(bm);
+    // ---- гэр хороолол (хойд энгэр)
+    const G = [];
+    for (let t = 0; t < 4000 && G.length < 420 * QUALITY; t++) { const x = -220 + rnd() * 440, z = -235 + rnd() * 105; if (Math.abs(x) < 7) continue; G.push([x, z]); }
+    const gw = new THREE.InstancedMesh(new THREE.CylinderGeometry(1.6, 1.6, 1.3, 10), mat(0xf3eee2), G.length), gr = new THREE.InstancedMesh(new THREE.ConeGeometry(1.8, .9, 10), mat(0xe3dccb), G.length);
+    G.forEach(([x, z], i) => { const y = groundY(x, z); o.scale.set(1, 1, 1); o.position.set(x, y + .65, z); o.updateMatrix(); gw.setMatrixAt(i, o.matrix); o.position.y = y + 1.75; o.updateMatrix(); gr.setMatrixAt(i, o.matrix); if (Math.hypot(x - ZONE.edge.x, z - ZONE.edge.z) < 50) cnt.edge++; });
+    gw.castShadow = gr.castShadow = true; add(gw); add(gr);
+    // ---- Богд хан уулын ой (хойд энгэр)
+    const spots = []; for (let t = 0; t < 6000 && spots.length < 380 * QUALITY; t++) { const x = -300 + rnd() * 600, z = 170 + rnd() * 140, h = groundY(x, z); if (h > 6 && h < 70) spots.push([x, h, z, .8 + rnd() * .7]); }
+    instTrees(spots, { crown: 0x2b5e3b, h: 6, r: 1.6 });
+    // ---- онцлох барилгууд
+    const building = (p, w, d, h, c, text, extra) => { const y = groundY(p.x, p.z); const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat(c)); m.position.set(p.x, y + h / 2, p.z); add(shadowAll(m)); solid.push([p.x - w / 2 - .7, p.x + w / 2 + .7, p.z - d / 2 - .7, p.z + d / 2 + .7]); const l = label(text, { h: 1.4 }); l.position.set(p.x, y + h + 2.5, p.z + d / 2); add(l); if (extra) extra(y); };
+    building({ x: HOSP.x, z: HOSP.z - 8 }, 16, 10, 9, 0xf2f2f2, 'Эмнэлэг', y => { const c1 = new THREE.Mesh(new THREE.BoxGeometry(3, .9, .2), mat(0xd63031)); c1.position.set(HOSP.x, y + 7, HOSP.z - 2.9); add(c1); const c2 = new THREE.Mesh(new THREE.BoxGeometry(.9, 3, .2), mat(0xd63031)); c2.position.set(HOSP.x, y + 7, HOSP.z - 2.9); add(c2); });
+    building({ x: UNI.x, z: UNI.z - 8 }, 22, 10, 12, 0xc9a77c, 'Их сургууль');
+    building({ x: T.bus.x, z: T.bus.z - 8 }, 18, 8, 5, 0x5d8aa8, 'Автобусны буудал', y => { for (let i = 0; i < 2; i++) { const b = new THREE.Mesh(new THREE.BoxGeometry(2.4, 2.6, 9), mat(0x2e86de)); b.position.set(T.bus.x - 5 + i * 6, y + 1.5, T.bus.z + 4); add(shadowAll(b)); } });
+    building({ x: T.rail.x, z: T.rail.z - 10 }, 26, 10, 8, 0xb5524a, 'Төмөр замын буудал', y => {
+      [-1.2, 1.2].forEach(dz => { const r = new THREE.Mesh(new THREE.BoxGeometry(200, .2, .25), mat(0x6b6b6b)); r.position.set(-230, groundY(-230, T.rail.z + 6) + .15, T.rail.z + 6 + dz); add(r); });
+      for (let i = 0; i < 5; i++) { const c = new THREE.Mesh(new THREE.BoxGeometry(11, 3.4, 3), mat(i ? 0x2e7d32 : 0xc0392b)); c.position.set(T.rail.x - 30 + i * 12, y + 2, T.rail.z + 6); add(shadowAll(c)); }
+    });
+    building({ x: T.air.x, z: T.air.z - 14 }, 30, 12, 9, 0xdfe6ee, 'Нисэх буудал', y => {
+      const rw = new THREE.Mesh(new THREE.PlaneGeometry(150, 14), mat(0x2f3338, { flatShading: false })); rw.rotation.x = -Math.PI / 2; rw.position.set(T.air.x, y + .07, T.air.z + 22); add(rw);
+      const pl = new THREE.Group(); const fu = new THREE.Mesh(new THREE.CylinderGeometry(1.3, 1.3, 16, 12), mat(0xf5f6f8)); fu.rotation.z = Math.PI / 2; pl.add(fu);
+      const wi = new THREE.Mesh(new THREE.BoxGeometry(3.5, .3, 17), mat(0xd0d6de)); pl.add(wi); const ta = new THREE.Mesh(new THREE.BoxGeometry(2.5, 3.5, .3), mat(0x2e86de)); ta.position.set(-7.2, 2, 0); pl.add(ta);
+      pl.position.set(T.air.x - 20, y + 2, T.air.z + 22); add(shadowAll(pl));
+    });
+    // барилгын талбай, кран
+    { const y = groundY(SITE.x, SITE.z), m = new THREE.Mesh(new THREE.BoxGeometry(14, 8, 10), mat(0xa0a4a8)); m.position.set(SITE.x, y + 4, SITE.z - 8); add(shadowAll(m)); solid.push([SITE.x - 7.7, SITE.x + 7.7, SITE.z - 13.7, SITE.z - 2.3]);
+      const t1 = new THREE.Mesh(new THREE.BoxGeometry(.8, 26, .8), mat(0xf1c40f)); t1.position.set(SITE.x + 10, y + 13, SITE.z - 8); add(shadowAll(t1)); const t2 = new THREE.Mesh(new THREE.BoxGeometry(22, .7, .7), mat(0xf1c40f)); t2.position.set(SITE.x + 4, y + 26, SITE.z - 8); add(shadowAll(t2));
+      const l = label('Барилгын талбай', { h: 1.2 }); l.position.set(SITE.x, y + 11, SITE.z - 2); add(l); }
+    // ---- хэмжилтийн цэг, Цэцээ гүн
+    PEAK = findPeak(0, 268, 40);
+    makeFlag(MEAS.x, MEAS.z, 0xffd54a, 'Хэмжилтийн цэг');
+    makeFlag(PEAK.x, PEAK.z, 0xe74c3c, 'Цэцээ гүн');
+    const zl = Object.values(ZONE).map(zn => { const f = { id: zn.name, name: zn.name, x: zn.x, z: zn.z }; makeSign(f); f.q.visible = !R.d.zones[zn.name]; f.lbl.visible = !!R.d.zones[zn.name]; return f; });
+    // ---- хүмүүс
+    npc('anujin', 'Оюутан Анужин', 'А', '#a7d8ff', { shirt: 0x8e44ad, pants: 0x2d3142, skin: 0xf0c7a3, hair: 0x2a1a12, tail: true, pack: 0x16a085 }, 8, -26);
+    npc('damdin', 'Дамдин гуай', 'Д', '#ffd1a1', { shirt: 0x6d4c41, belt: 0xf1c40f, pants: 0x3e2723, skin: 0xd9a67e, hair: 0xcfcfcf, deel: true, hat: 'cone', hatColor: 0x8d6e63 }, HOSP.x, HOSP.z + 4);
+    npc('ganaa', 'Инженер Ганаа', 'Г', '#ffe08a', { shirt: 0xf39c12, pants: 0x34495e, skin: 0xe8b88f, hair: 0x1b1b1b, hat: 'cap', hatColor: 0xf1c40f }, SITE.x - 6, SITE.z + 4);
+    npc('bold', 'Тээвэрчин Болд', 'Б', '#b8f0c8', { shirt: 0x2e86de, pants: 0x2c3e50, skin: 0xd9a67e, hair: 0x111111, hat: 'cap', hatColor: 0xc0392b }, -10, -26);
+    npc('temuulen', 'Уулчин Тэмүүлэн', 'Т', '#ffd28a', LOOK.temuulen, 4, 150);
+    trader(-16, -52);
+    // ---- машинууд (өргөн чөлөөгөөр)
+    cars = [];
+    const CC = [0xc0392b, 0x2980b9, 0xf1c40f, 0xecf0f1, 0x27ae60, 0x8e44ad, 0x34495e, 0xe67e22];
+    for (let i = 0; i < Math.round(12 * QUALITY + 2); i++) {
+      const g = new THREE.Group(); const b = new THREE.Mesh(new THREE.BoxGeometry(2, 1, 4), mat(CC[i % CC.length])); b.position.y = .8; g.add(b);
+      const tp = new THREE.Mesh(new THREE.BoxGeometry(1.8, .8, 2.2), mat(0x9fd4f5, { transparent: true, opacity: .8 })); tp.position.y = 1.6; g.add(tp);
+      add(shadowAll(g)); cars.push({ g, lane: i % 2 ? -42.2 : -37.8, dir: i % 2 ? -1 : 1, off: i * 47, sp: 9 + (i % 3) * 2 });
+    }
+    // ---- харилцах цэгүүд
+    Object.values(T).forEach(tm => W.inter.push({ pos: () => tm, r: 9, label: () => R.q === 2 && R.ph === 'deliver' ? 'Ачааг илгээх: ' + tm.name : null, act: () => deliver(tm) }));
+    zl.forEach(f => W.inter.push({ pos: () => f, r: 7, label: () => R.q === 1 && R.ph === 'zones' && !R.d.zones[f.name] ? f.name + ': нягтшил хэмжих' : null, act: () => measureZone(f) }));
+    W.inter.push(
+      { pos: () => MEAS, r: 5, label: () => R.q === 3 && R.ph === 'base' ? 'Хотод температур хэмжих' : null, act: measureCity },
+      { pos: () => PEAK, r: 7, label: () => R.q === 3 && R.ph === 'peak' ? 'Цэцээ гүнд температур хэмжих' : null, act: measurePeak },
+    );
+    W.tick = (dt, t) => {
+      cars.forEach(c => { const x = ((c.off + t * c.sp * c.dir) % 500 + 750) % 500 - 250; c.g.position.set(x, groundY(x, c.lane), c.lane); c.g.rotation.y = c.dir > 0 ? Math.PI / 2 : -Math.PI / 2; });
+      if (bldMat) bldMat.emissiveIntensity = nightN * .35;
+      zl.forEach(f => { if (R.d.zones[f.name] && f.q.visible) { f.q.visible = false; f.lbl.visible = true; } });
+    };
+    W.marks = () => [
+      { x: PLAZA.x, z: PLAZA.z + 14, t: 'text', s: 'Төв талбай' }, { x: T.air.x, z: T.air.z + 40, t: 'text', s: '✈ Нисэх буудал', c: '#0d3a66' },
+      { x: T.rail.x, z: T.rail.z + 24, t: 'text', s: 'Төмөр замын буудал', c: '#6b1d1d' }, { x: T.bus.x, z: T.bus.z - 20, t: 'text', s: 'Автобусны буудал', c: '#0d3a66' },
+      { x: HOSP.x, z: HOSP.z - 22, t: 'text', s: 'Эмнэлэг' }, { x: UNI.x, z: UNI.z - 22, t: 'text', s: 'Их сургууль' },
+      { x: 0, z: -205, t: 'text', s: 'Гэр хороолол', c: '#6b3d00' }, { x: 150, z: 145, t: 'text', s: 'Туул гол', c: '#0d3a66' },
+      { x: PEAK.x, z: PEAK.z, t: 'peak', s: 'Цэцээ гүн' }, { x: 0, z: 225, t: 'text', s: 'Богд хан уул', c: '#1f4d2b' },
+    ];
+    W.distFrom = () => null;
+  };
+  def.objective = R => {
+    const { q, ph, d } = R, L = [], a = (t, done, need) => L.push({ t, done, need });
+    if (q === 0) { a('Оюутан Анужинтай ярих', ph !== 'talk'); a('Эмнэлгийн дэргэдэх Дамдин гуайгаас асуух', !!(d.reasons || {}).damdin); a('Барилгын талбай дахь инженер Ганаагаас асуух', !!(d.reasons || {}).ganaa); a('Анужинд хариугаа хэлэх', false); }
+    else if (q === 1) { a('Анужинтай ярих', ph !== 'talk'); Object.values(ZONE).forEach(z => a(z.name + '-д нягтшил хэмжих' + ((d.zones || {})[z.name] != null ? ` · ${d.zones[z.name]}` : ''), (d.zones || {})[z.name] != null)); a('Анужинд мэдэгдэх', false); }
+    else if (q === 2) { a('Тээвэрчин Болдтой ярих', ph !== 'talk'); a('Тохирох буудал руу очиж ачааг илгээх', ph === 'return'); a('Болдод мэдэгдэх', false); }
+    else if (q === 3) { a('Уулчин Тэмүүлэнтэй гүүрний урд ярих', ph !== 'talk'); if (!S.owned.thermo) a('Дэлгүүрээс «Термометр» авах (B)', false, true); if (!S.owned.boots) a('Дэлгүүрээс «Уулын гутал» авах (B)', false, true); a('Төв талбайн хэмжилтийн цэгт температур хэмжих', d.t0 != null); a('Цэцээ гүн оргилд гарч хэмжих', false); }
+    return L;
+  };
+  def.needsTalk = (id, R) => {
+    if (id === 'anujin') return (R.q === 0 || R.q === 1) && (R.ph === 'talk' || R.ph === 'return');
+    if (id === 'damdin') return R.q === 0 && R.ph === 'ask' && !R.d.reasons.damdin;
+    if (id === 'ganaa') return R.q === 0 && R.ph === 'ask' && !R.d.reasons.ganaa;
+    if (id === 'bold') return R.q === 2 && (R.ph === 'talk' || R.ph === 'return');
+    if (id === 'temuulen') return R.q === 3 && R.ph === 'talk';
+    return false;
+  };
+  def.target = R => {
+    if (R.q === 1 && R.ph === 'zones') { for (const z of Object.values(ZONE)) if (R.d.zones[z.name] == null) return z; }
+    if (R.q === 3 && R.ph === 'base') return MEAS;
+    if (R.q === 3 && R.ph === 'peak') return PEAK;
+    return null;   // тээврийн даалгаварт буудлаа өөрөө сонгоно
+  };
+  def.talk = {
+    async anujin() {
+      const R = reg(), a = who('anujin');
+      if (R.q === 0 && R.ph === 'talk') {
+        await say(a, 'Сайн уу, нийслэлд тавтай морил! Би <b>Анужин</b>. Аймгаас их сургуульд суралцахаар Улаанбаатарт ирсэн.');
+        await say(a, 'Олон хүн хөдөөнөөс хот руу нүүж ирдэг. Яагаад гэдгийг хамт судалъя. Эмнэлгийн дэргэдэх <b>Дамдин гуай</b>, барилгын талбай дахь <b>инженер Ганаа</b>-гаас яагаад хотод ирснийг нь асуугаарай.');
+        set({ ph: 'ask' });
+      } else if (R.q === 0 && R.ph === 'return') {
+        await say(a, 'Тэгэхээр би сурахаар, Дамдин гуай эрүүл мэндийн тусламжид ойр байхаар, Ганаа ажлын байр хайж ирсэн байна.');
+        await quiz(a, 'Хотод амьдрах хүний тоо өсөхийг юу гэх вэ?', ['Хотжилт', 'Цөлжилт', 'Нягтшил', 'Элэгдэл'], 'Үг нь «хот» гэдгээс гаралтай.');
+        await quiz(a, 'Хотод хүн олшироход нөлөөлөх чухал хүчин зүйл аль вэ?', ['Шилжих хөдөлгөөн', 'Газар хөдлөлт', 'Далайн урсгал', 'Галт уул'], 'Бид гурав бүгд өөр газраас нүүж ирсэн.');
+        await quiz(a, 'Дэлхийд хотын хүн ам хөдөөгийнхөөс анх хэдэн онд давсан бэ?', ['2010', '1950', '1970', '1990'], '2010 онд хот 50.8%, хөдөө 49.2% болсон.');
+        await finishQuest(0);
+      } else if (R.q === 1 && R.ph === 'talk') {
+        await say(a, 'Хотын төв ба зах хэр ялгаатай вэ? <b>Хотын төв</b> болон хойд энгэрийн <b>гэр хороолол</b>-д байгаа «?» самбарын дэргэд очиж, ойр орчмын барилга, айлыг тоолоорой. Шар туяа замыг заана.');
+        set({ ph: 'zones' });
+      } else if (R.q === 1 && R.ph === 'return') {
+        await quiz(a, 'Хэмжилтээс харахад аль хэсэгт <b>хүн амын нягтшил</b> их вэ?', ['Хотын төвд', 'Хотын захад', 'Адилхан', 'Мэдэх боломжгүй'], 'Хотын төвд олон давхар байшин олон. Нэг байшинд олон айл амьдардаг.');
+        await quiz(a, 'Газрын зурагт «нягтшил маш их» өнгөөр ямар суурин тэмдэглэгддэг вэ?', ['Том хот суурин', 'Жижиг тосгон', 'Алслагдсан суурин', 'Хөдөөгийн суурин'], 'Энэ бол хамгийн олон хүн бөөгнөрсөн газар.');
+        await finishQuest(1);
+        await say(a, 'Тээвэрчин <b>Болд</b> чамаас тусламж хүсэж байна.');
+      } else await say(a, pick(['1 саяас дээш хүн амтай хотыг <b>саятан хот</b> гэдэг.', 'Хотод их, дээд сургууль, эмнэлэг ойр байдаг.']));
+    },
+    async damdin() {
+      const R = reg(), d = who('damdin');
+      if (R.q === 0 && R.ph === 'ask' && !R.d.reasons.damdin) {
+        await say(d, 'Сайн байна уу, хүү минь. Би хөдөө малчин байлаа. Нас ахиад <b>эрүүл мэндийн тусламж</b>-д ойр байх гэж хотод нүүж ирсэн. Энд эмнэлэг ойрхон.');
+        R.d.reasons.damdin = true; afterAsk();
+      } else await say(d, 'Хөдөөгийн цэвэр агаар заримдаа санагддаг шүү.');
+    },
+    async ganaa() {
+      const R = reg(), g = who('ganaa');
+      if (R.q === 0 && R.ph === 'ask' && !R.d.reasons.ganaa) {
+        await say(g, 'Сайн уу! Би барилгын инженер. Миний мэргэжлээр <b>хөдөөд ажлын байр хомс</b> байсан тул хотод ирсэн.');
+        R.d.reasons.ganaa = true; afterAsk();
+      } else await say(g, 'Энэ байшинг ирэх жил дуусгана.');
+    },
+    async bold() {
+      const R = reg(), b = who('bold');
+      if (R.q === 2 && R.ph === 'talk') {
+        await say(b, 'Сайн уу! Би тээвэрчин <b>Болд</b>. Улаангом руу <b>яаралтай эм</b> хүргэх хэрэгтэй байна. Улаангом Улаанбаатараас <b>1336 км</b> зайтай.');
+        await say(b, 'Хотод <b>нисэх буудал</b> (зүүн), <b>төмөр замын буудал</b> (баруун), <b>автобусны буудал</b> (хойд) бий. Аль тээврээр илгээхээ шийдээд тэр буудал руу очоорой. <b>M</b> дарвал байрлал харагдана.');
+        set({ ph: 'deliver' });
+      } else if (R.q === 2 && R.ph === 'return') {
+        await say(b, 'Эм цагтаа хүрлээ! Баярлалаа.');
+        await quiz(b, 'Их хэмжээний, овор ихтэй ачааг <b>хямд</b> тээвэрлэхэд аль тээвэр тохиромжтой вэ?', ['Усан замын', 'Агаарын', 'Морин', 'Дугуйн'], 'Далайн том хөлөг онгоц маш их ачаа даана.');
+        await quiz(b, 'Монгол Улс хөгжлийн аль бүлэгт багтдаг вэ?', ['Хөгжиж буй орон', 'Хөгжингүй орон', 'Шилжилтийн эдийн засагтай орон', 'Аль нь ч биш'], 'Гол салбар нь хөдөө аж ахуй, уул уурхай.');
+        await finishQuest(2);
+        await say(b, 'Уулчин <b>Тэмүүлэн</b> Туул голын гүүрний урд чамайг хүлээж байна.');
+      } else await say(b, pick(['Зорих газар хэт хол бол агаарын тээвэр хурдан.', 'Хүмүүс замын хол, ойр, саад бартаагаас шалтгаалж тээврээ сонгодог.']));
+    },
+    async temuulen() {
+      const R = reg(), t = who('temuulen');
+      if (R.q === 3 && R.ph === 'talk') {
+        await say(t, 'Сайн уу! Улаанбаатар далайн түвшнээс дээш <b>1351 м</b> өндөрт оршдог. Өмнө талд нь Богд хан уул бий, түүний <b>Цэцээ гүн</b> оргил <b>2268 м</b>.');
+        await say(t, 'Эхлээд <b>Төв талбайн хэмжилтийн цэг</b>-т температур хэмж. Дараа нь Цэцээ гүн оргил руу авир.');
+        const miss = ['thermo', 'boots'].filter(k => !S.owned[k]).map(k => ITEM[k].name);
+        if (miss.length) await say(t, `Танд <b>${miss.join(', ')}</b> хэрэгтэй. <b>B</b> дарж аваарай.`);
+        set({ ph: 'base' });
+      } else await say(t, pick(['Богд хан уулын хойд энгэр ой модтой.', 'Өндөрт гарах тусам агаар сэрүүсдэг.']));
+    },
+  };
+  function afterAsk() { const R = reg(); if (R.d.reasons.damdin && R.d.reasons.ganaa) { set({ ph: 'return' }); toast('Хоёулаас нь асууллаа! Анужин руу буц.'); } else renderQuest(); }
+  async function measureZone(f) {
+    const R = reg(), isC = f.name === ZONE.center.name, n = isC ? cnt.center : cnt.edge, hh = isC ? cnt.hh : cnt.edge, what = isC ? 'олон давхар барилга' : 'гэр';
+    await say(NARR, `<b>${f.name}</b>: самбараас 500 м-ийн радиуст <b>${n}</b> ${what} тоолов. ${isC ? 'Давхар бүрт 4 айл гэж тооцвол ойролцоогоор <b>' + hh + ' айл</b> амьдарч байна.' : 'Гэр бүрт нэг айл, тэгэхээр <b>' + hh + ' айл</b> амьдарч байна.'} <span style="color:var(--muted)">(тоглоомын жишээ тоо)</span>`);
+    R.d.zones[f.name] = hh + ' айл';
+    if (Object.values(ZONE).every(z => R.d.zones[z.name] != null)) { set({ ph: 'return' }); toast('Хоёр газарт хэмжлээ! Анужин руу буц.'); } else renderQuest();
+  }
+  async function deliver(tm) {
+    const R = reg();
+    if (tm.ok) { await say(NARR, `Зөв сонголт! Улаангом <b>1336 км</b> хол, ачаа яаралтай. Зорих газар хэт хол бол <b>агаарын тээвэр</b>-ийг сонгоно. Эм онгоцоор явлаа.`); set({ ph: 'return' }); }
+    else { R.mist++; await say(NARR, `<b>${tm.name}</b>: энэ тээврээр 1336 км замыг туулахад удна. Эм <b>яаралтай</b> хэрэгтэй. Илүү хурдан тээвэр сонгоорой.`); }
+  }
+  async function measureCity() {
+    if (!(await need('thermo', 'Температур хэмжихэд <b>Термометр</b> хэрэгтэй.'))) return;
+    const R = reg(); R.d.t0 = 21;
+    await say(NARR, 'Хэмжилтийн цэг: Улаанбаатар, <b>1351 м</b>. Үдийн 13 цагт агаарын температур <b>21°C</b>. Одоо Цэцээ гүн рүү авираарай!');
+    set({ ph: 'peak' });
+  }
+  async function measurePeak() {
+    if (!(await need('thermo', 'Температур хэмжихэд <b>Термометр</b> хэрэгтэй.'))) return;
+    await quiz(who('temuulen'), 'Та <b>1351 м</b>-ээс <b>2268 м</b> хүртэл өгслөө. Хотод 21°C байсан. Цэцээ гүн оргилд хэдэн хэм байх вэ?', ['≈15,5°C', '≈21°C', '≈26,5°C', '≈9°C'], '100 м тутамд 0,6°C буурна. 2268 − 1351 = 917 м, тэгэхээр 917 ÷ 100 × 0,6 ≈ 5,5°C буурна.', '21 − 5,5 ≈ 15,5°C. Термометр ч мөн тийм заалаа!');
+    await finishQuest(3);
+  }
+  return def;
+})();
+
+const ORDER = ['hangai', 'gobi', 'khuvsgul', 'ub'];
+// аль нутгийг дуусгавал нээгдэх вэ
+const REQ = { gobi: 'hangai', khuvsgul: 'gobi', ub: 'hangai' };
 
 /* ================= ЭД ЗҮЙЛ ================= */
 const ITEMS = [
@@ -1332,7 +1594,7 @@ const levelOf = e => { let i = 0; LEVELS.forEach((l, k) => { if (e >= l[0]) i = 
 /* ================= ТӨЛӨВ ================= */
 const SAVE_KEY = 'gazarzui-aylagch-v2';
 const freshReg = () => ({ q: 0, ph: 'talk', mist: 0, d: {} });
-const fresh = () => ({ region: null, reg: { hangai: freshReg(), gobi: freshReg(), khuvsgul: freshReg() }, wallet: 0, earned: 0, owned: {}, equip: {}, qstars: {}, found: { hangai: [], gobi: [], khuvsgul: [] }, walk: 0, pos: null, yaw: 0 });
+const fresh = () => ({ region: null, reg: { hangai: freshReg(), gobi: freshReg(), khuvsgul: freshReg(), ub: freshReg() }, wallet: 0, earned: 0, owned: {}, equip: {}, qstars: {}, found: { hangai: [], gobi: [], khuvsgul: [], ub: [] }, walk: 0, pos: null, yaw: 0 });
 let S = fresh();
 const reg = () => S.reg[S.region];
 const P = { x: 0, z: 24, y: 0, vy: 0, jump: 0, face: Math.PI, walkT: 0, moving: 0 };
@@ -1340,7 +1602,7 @@ const cam = { yaw: 0, pitch: .38, dist: 13 };
 function save() { try { if (W) { S.pos = { x: P.x, z: P.z }; S.yaw = cam.yaw; } localStorage.setItem(SAVE_KEY, JSON.stringify(S)); } catch (e) {} }
 function loadSave() { try { const s = JSON.parse(localStorage.getItem(SAVE_KEY)); return s && s.reg ? s : null; } catch (e) { return null; } }
 const regionDone = id => S.reg[id].q >= REGIONS[id].quests.length;
-const unlocked = id => { const i = ORDER.indexOf(id); return i === 0 || regionDone(ORDER[i - 1]); };
+const unlocked = id => !REQ[id] || regionDone(REQ[id]);
 
 /* ================= ӨДӨР, ШӨНӨ ================= */
 // Нэг хоног тоглоомд 4 минут. Дэлхий тэнхлэгээ эргэдэг учраас өдөр шөнө солигддог (7-р анги 2.2).
@@ -1439,7 +1701,7 @@ function loadRegion(id, atSpawn) {
   S.region = id;
   const def = REGIONS[id];
   seed = 7 + ORDER.indexOf(id) * 1000;
-  W = { def, npc: {}, inter: [], talk: def.talk, tick: () => {}, marks: () => [], distFrom: () => null, mapOpened: () => {}, mapBase: null, stars: [] };
+  W = { def, solid: null, npc: {}, inter: [], talk: def.talk, tick: () => {}, marks: () => [], distFrom: () => null, mapOpened: () => {}, mapBase: null, stars: [] };
   W.HG = buildTerrain(def);
   buildWater(def);
   def.init();
@@ -1555,7 +1817,7 @@ async function finishQuest(i) {
   await say(NARR, `<div class="stars">${'★'.repeat(stars)}${'☆'.repeat(3 - stars)}</div><b>«${def.quests[i].title}»</b> биеллээ! <b>+${stars} ★</b> авлаа. Аяллын тэмдэглэлд шинэ баримт нэмэгдлээ:<br><br><b>${f.t}.</b> ${f.x}<div class="ref">${f.ref}</div>`, true);
   set({ q: i + 1, ph: 'talk', mist: 0 });
   if (R.q >= def.quests.length) {
-    if (ORDER.every(regionDone)) { await say(NARR, 'Та Монгол орны гурван нутгийн бүх даалгаврыг биелүүллээ!'); showFinale(); }
+    if (ORDER.every(regionDone)) { await say(NARR, 'Та Монгол орны дөрвөн газрын бүх даалгаврыг биелүүллээ!'); showFinale(); }
     else { const nx = ORDER.find(id => !regionDone(id)); await say(NARR, `<b>${def.name}</b>-ийн бүх даалгавар биеллээ! <b>${REGIONS[nx].name}</b> руу аялах зам нээгдлээ. <b>T</b> дарж Монголын газрын зургаас сонгоорой.`); }
   }
 }
@@ -1652,7 +1914,6 @@ function renderTravel() {
   s += `<rect x="0" y="0" width="680" height="350" rx="14" fill="#1b2b3a"/>`;
   s += `<path d="${outline}" fill="url(#mg)" stroke="#f3ead2" stroke-width="3" stroke-linejoin="round"/>`;
   s += `<g font-family="Nunito, sans-serif" font-weight="800">`;
-  s += `<circle cx="${mx(106.9)}" cy="${my(47.9)}" r="5" fill="#fff" stroke="#1b2b3a" stroke-width="2"/><text x="${mx(106.9) + 9}" y="${my(47.9) + 5}" font-size="14" fill="#1b2b3a">Улаанбаатар</text>`;
   ORDER.forEach((id, k) => {
     const def = REGIONS[id], x = mx(def.lon), y = my(def.lat), lockd = !unlocked(id), done = regionDone(id), R = S.reg[id];
     s += `<g class="pin ${lockd ? 'lock' : ''} ${tSel === id ? 'sel' : ''}" data-reg="${id}" tabindex="0">`;
@@ -1664,7 +1925,7 @@ function renderTravel() {
   svg.innerHTML = s;
   const id = tSel, def = id && REGIONS[id];
   $('#tInfo').innerHTML = def ? `<div><h4>${def.name}</h4><p>${def.desc}</p><div class="topics">${def.topics.map(t => `<span>${t}</span>`).join('')}</div></div>
-    <button class="big" id="tGo" ${unlocked(id) ? '' : 'disabled'}>${!unlocked(id) ? 'Түгжээтэй' : S.region === id && W ? 'Энд байна' : 'Аялах'}</button>` + (!unlocked(id) ? `<p style="grid-column:1/-1">${REGIONS[ORDER[ORDER.indexOf(id) - 1]].name}-ийн бүх даалгаврыг биелүүлбэл нээгдэнэ.</p>` : '')
+    <button class="big" id="tGo" ${unlocked(id) ? '' : 'disabled'}>${!unlocked(id) ? 'Түгжээтэй' : S.region === id && W ? 'Энд байна' : 'Аялах'}</button>` + (!unlocked(id) ? `<p style="grid-column:1/-1">${REGIONS[REQ[id]].name}-ийн бүх даалгаврыг биелүүлбэл нээгдэнэ.</p>` : '')
     : `<p>Газрын зураг дээрх цэгийг (эсвэл <kbd>1</kbd>–<kbd>3</kbd>) дарж нутгаа сонго.</p>`;
   $('#tClose').hidden = tFirst;
 }
@@ -1785,7 +2046,7 @@ addEventListener('keydown', e => {
   }
   if (!$('#finale').hidden) return;
   if (!$('#travel').hidden) {
-    if (num && +num[2] <= 3) selRegion(ORDER[+num[2] - 1]);
+    if (num && +num[2] <= ORDER.length) selRegion(ORDER[+num[2] - 1]);
     else if ((c === 'Enter' || c === 'NumpadEnter') && tSel) goRegion(tSel);
     else if (c === 'KeyT' || c === 'Escape') closePanel('travel');
     return;
@@ -1808,7 +2069,7 @@ $('#dNext').onclick = () => D.onNext && D.onNext();
 
 function begin(s) {
   S = s || fresh();
-  ['hangai', 'gobi', 'khuvsgul'].forEach(id => { S.reg[id] = S.reg[id] || freshReg(); S.found[id] = S.found[id] || []; });
+  ORDER.forEach(id => { S.reg[id] = S.reg[id] || freshReg(); S.found[id] = S.found[id] || []; });
   buildPlayer();
   $('#start').hidden = true; $('#hud').hidden = false; started = true;
   if (TOUCH) {
@@ -1882,12 +2143,13 @@ function step(dt) {
     const nx = Math.max(-325, Math.min(325, P.x + mx2 * sp * dt)), nz = Math.max(-325, Math.min(325, P.z + mz2 * sp * dt));
     const ng = groundY(nx, nz), L1 = lakeAt(nx, nz), na = altOf(ng);
     let block = L1 && ng < L1.y - 2.6 ? 'deep' : null;
+    if (!block && W.solid && W.solid.some(b => nx > b[0] && nx < b[1] && nz > b[2] && nz < b[3])) block = 'solid';
     if (!block && ng > gy0) {
       if (def.bootsAlt && na > def.bootsAlt && !S.owned.boots) block = 'boots';
       else if (def.coldAlt && na > def.coldAlt && !S.owned.jacket) block = 'cold';
     }
     if (!block) { S.walk += Math.hypot(nx - P.x, nz - P.z) * M_PER_U; P.x = nx; P.z = nz; }
-    else if (warnT <= 0 && block !== 'deep') { warnT = 3; toast(block === 'boots' ? `${def.bootsAlt} м-ээс дээш энгэр эгц, гулгамтгай байна. «Уулын гутал» хэрэгтэй (B).` : `${def.coldAlt} м-ээс дээш хэт хүйтэн байна! «Дулаан хүрэм» хэрэгтэй (B).`); }
+    else if (warnT <= 0 && (block === 'boots' || block === 'cold')) { warnT = 3; toast(block === 'boots' ? `${def.bootsAlt} м-ээс дээш энгэр эгц, гулгамтгай байна. «Уулын гутал» хэрэгтэй (B).` : `${def.coldAlt} м-ээс дээш хэт хүйтэн байна! «Дулаан хүрэм» хэрэгтэй (B).`); }
     const want = Math.atan2(mx2, mz2);
     P.face += (((want - P.face + Math.PI * 3) % (Math.PI * 2)) - Math.PI) * Math.min(1, dt * 12);
     P.walkT += dt * sp * 1.1;
