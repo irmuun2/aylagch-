@@ -244,6 +244,7 @@ html.touch .big{padding:10px 20px;font-size:16px}
     <div class="row hi"><span>Од</span><b id="sStars">0</b></div>
     <div class="row"><span>Үнэмлэхүй өндөр</span><b id="sAlt">0 м</b></div>
     <div class="row" id="sDistRow" hidden><span>Хуарангаас</span><b id="sDist">0 км</b></div>
+    <div class="row"><span>Цаг</span><b id="sDay">☀ Өдөр</b></div>
     <div class="row"><span>Нуугдмал од</span><b id="sHidden">0/6</b></div>
   </div>
   <div id="bag" class="panel"></div>
@@ -257,6 +258,7 @@ html.touch .big{padding:10px 20px;font-size:16px}
     <span><kbd>B</kbd> дэлгүүр</span>
     <span><kbd>T</kbd> аялах</span>
     <span><kbd>J</kbd> тэмдэглэл</span>
+    <span><kbd>G</kbd> шилжих</span>
     <span><kbd>Esc</kbd> хулганы сум</span>
   </div>
   <div id="toast" class="panel"></div>
@@ -271,6 +273,7 @@ html.touch .big{padding:10px 20px;font-size:16px}
       <button id="tbShop" aria-label="Дэлгүүр">🛒</button>
       <button id="tbJour" aria-label="Аяллын тэмдэглэл">📖</button>
       <button id="tbTravel" aria-label="Монголын зургаар аялах">🧭</button>
+      <button id="tbTele" aria-label="Шилжүүлэгч" hidden>🌀</button>
     </div>
   </div>
   <div id="cross" hidden></div>
@@ -504,6 +507,33 @@ const makeDeer = () => quad({ color: 0x9a6b3f, w: .8, h: .8, l: 1.7, leg: 1.1, n
 const makeMoose = () => quad({ color: 0x4a3426, w: 1.3, h: 1.3, l: 2.4, leg: 1.6, neck: .7, antler: 'palm' });
 const makeBear = () => quad({ color: 0x5b3a22, w: 1.5, h: 1.3, l: 2.2, leg: .8, neck: .3 });
 const makeHorse = () => quad({ color: 0x7a4b2a, head: 0x6a3f22, legColor: 0x3a2618, w: .9, h: 1, l: 2.2, leg: 1.2, neck: 1 });
+function wheel(r, w) { const g = new THREE.Group(); const t = new THREE.Mesh(new THREE.CylinderGeometry(r, r, w, 14), mat(0x1d1d1d)); t.rotation.z = Math.PI / 2; g.add(t); const h = new THREE.Mesh(new THREE.CylinderGeometry(r * .45, r * .45, w + .02, 8), mat(0xb0b0b0)); h.rotation.z = Math.PI / 2; g.add(h); const sp = new THREE.Mesh(new THREE.BoxGeometry(w + .04, r * 1.6, .08), mat(0x8a8a8a)); g.add(sp); return g; }
+function makeMoto() {
+  const g = new THREE.Group(), wheels = [];
+  [-.95, .95].forEach(z => { const w = wheel(.45, .22); w.position.set(0, .45, z); g.add(w); wheels.push(w); });
+  const body = new THREE.Mesh(new THREE.BoxGeometry(.38, .4, 1.4), mat(0xc0392b)); body.position.set(0, .85, 0); g.add(body);
+  const tank = new THREE.Mesh(new THREE.BoxGeometry(.46, .3, .55), mat(0xe74c3c)); tank.position.set(0, 1.08, .25); g.add(tank);
+  const seat = new THREE.Mesh(new THREE.BoxGeometry(.42, .14, .7), mat(0x1a1a1a)); seat.position.set(0, 1.1, -.35); g.add(seat);
+  const fork = new THREE.Mesh(new THREE.BoxGeometry(.08, .9, .08), mat(0xaaaaaa)); fork.position.set(0, .95, .82); fork.rotation.x = -.35; g.add(fork);
+  const bar = new THREE.Mesh(new THREE.BoxGeometry(.95, .07, .07), mat(0xaaaaaa)); bar.position.set(0, 1.4, .68); g.add(bar);
+  const lamp = new THREE.Mesh(new THREE.SphereGeometry(.13, 10, 8), mat(0xfff1b0, { emissive: 0xffd54a, emissiveIntensity: .8 })); lamp.position.set(0, 1.2, 1.02); g.add(lamp);
+  g.userData.wheels = wheels;
+  return shadowAll(g);
+}
+function makeCar() {
+  const g = new THREE.Group(), wheels = [], green = 0x3f7d3a;
+  const body = new THREE.Mesh(new THREE.BoxGeometry(1.9, .75, 3.3), mat(green)); body.position.y = .95; g.add(body);
+  const hood = new THREE.Mesh(new THREE.BoxGeometry(1.8, .25, 1.1), mat(0x356b31)); hood.position.set(0, 1.42, 1.05); g.add(hood);
+  const glass = new THREE.Mesh(new THREE.BoxGeometry(1.7, .6, .08), mat(0x9fd4f5, { transparent: true, opacity: .55 })); glass.position.set(0, 1.85, .45); glass.rotation.x = -.25; g.add(glass);
+  const frame = new THREE.Mesh(new THREE.BoxGeometry(1.8, .08, .1), mat(0x222222)); frame.position.set(0, 2.15, .38); g.add(frame);
+  const bump = new THREE.Mesh(new THREE.BoxGeometry(2, .2, .15), mat(0x222222)); bump.position.set(0, .7, 1.7); g.add(bump);
+  [-.6, .6].forEach(x => { const l = new THREE.Mesh(new THREE.SphereGeometry(.13, 10, 8), mat(0xfff1b0, { emissive: 0xffd54a, emissiveIntensity: .8 })); l.position.set(x, 1.15, 1.67); g.add(l); });
+  const spare = wheel(.42, .25); spare.rotation.y = Math.PI / 2; spare.position.set(0, 1.15, -1.75); g.add(spare);
+  [[-1, 1.1], [1, 1.1], [-1, -1.1], [1, -1.1]].forEach(([x, z]) => { const w = wheel(.5, .3); w.position.set(x, .5, z); g.add(w); wheels.push(w); });
+  g.userData.wheels = wheels;
+  return shadowAll(g);
+}
+const MOUNT = { horse: { make: makeHorse, sp: 1.7, seat: 1.55, cam: 1.3 }, moto: { make: makeMoto, sp: 2.4, seat: .75, cam: .6 }, car: { make: makeCar, sp: 3, seat: .45, cam: .6 } };
 function walkQuad(g, t, amt) { (g.userData.legs || []).forEach((l, i) => l.rotation.x = Math.sin(t + (i === 0 || i === 3 ? 0 : Math.PI)) * .5 * amt); }
 
 function makeGer(x, z, s = 1, door = 0xe0702a) {
@@ -629,6 +659,34 @@ function npc(id, name, short, color, look, x, z) {
 }
 const who = id => { const n = W.npc[id]; return { name: n.name, short: n.short, color: n.color }; };
 const NARR = { name: 'Аяллын тэмдэглэл', short: '★', color: '#ffd54a' };
+const TELE = { name: 'Шилжүүлэгч', short: '🌀', color: '#b39ddb' };
+// сонголттой яриа: товч бүр нэг газар
+function choose(w, html, opts) {
+  return new Promise(res => {
+    showBox(w, html); $('#dNext').hidden = true;
+    const box = $('#dOpts');
+    const pickI = i => { if (!opts[i]) return; closeBox(); res(i); };
+    opts.forEach((t, i) => { const b = document.createElement('button'); b.innerHTML = '<kbd>' + (i + 1) + '</kbd><span>' + t + '</span>'; b.onclick = () => pickI(i); box.appendChild(b); });
+    D.onOpt = pickI; D.onNext = null;
+  });
+}
+async function teleport() {
+  if (!S.owned.tele) { toast('Шилжүүлэгч алга байна. (B) дэлгүүрээс аваарай.'); return; }
+  const def = W.def, R = reg();
+  let tg = null;
+  for (const id in W.npc) if (def.needsTalk(id, R)) { const p = W.npc[id].c.g.position; tg = { x: p.x, z: p.z }; break; }
+  if (!tg) { const t2 = def.target(R); if (t2) tg = { x: t2.x, z: t2.z }; }
+  const opts = ['🏕️ Хуаран руу буцах'], dest = [def.spawn];
+  if (tg) { opts.push('🎯 Шар туяатай даалгаврын газар руу'); dest.push({ x: tg.x, z: tg.z + 5 }); }
+  opts.push('Болих');
+  const i = await choose(TELE, 'Хаашаа шилжих вэ?' + (tg ? '' : ' <span style="color:var(--muted)">(Энэ даалгаварт шар туяа байхгүй: зүг чиг, масштабаараа өөрөө олох ёстой.)</span>'), opts);
+  const d = dest[i]; if (!d) return;
+  const a = altOf(groundY(d.x, d.z));
+  if (def.bootsAlt && a > def.bootsAlt && !S.owned.boots) { toast('Тэр газар хэт эгц. Эхлээд «Уулын гутал» аваарай (B).'); return; }
+  if (def.coldAlt && a > def.coldAlt && !S.owned.jacket) { toast('Тэр газар хэт хүйтэн. Эхлээд «Дулаан хүрэм» аваарай (B).'); return; }
+  P.x = d.x; P.z = d.z; P.jump = 0; P.vy = 0;
+  toast('🌀 Шилжлээ!'); save();
+}
 
 /* ================= НУТГУУД ================= */
 const LOOK = {
@@ -1257,12 +1315,15 @@ const ITEMS = [
   { id: 'boots', type: 'tool', icon: '🥾', name: 'Уулын гутал', price: 2, desc: 'Эгц энгэрт гулсахгүй. Хангайд 1600 м, Хөвсгөлд 2000 м-ээс дээш гарахад хэрэгтэй.', use: 'Хангай: Уул хэр өндөр вэ? · Хөвсгөл: Өндрийн бүслүүр' },
   { id: 'thermo', type: 'tool', icon: '🌡️', name: 'Термометр', price: 2, desc: 'Агаарын температурыг °C-ээр хэмжинэ.', use: 'Говь: Цаг уурын станц · Хөвсгөл: Өндрийн бүслүүр' },
   { id: 'hammer', type: 'tool', icon: '🔨', name: 'Геологийн алх', price: 2, desc: 'Хадан цохионоос чулуулгийн дээж авна.', use: 'Говь: Чулуулгийн дээж' },
+  { id: 'tele', type: 'tool', icon: '🌀', name: 'Шилжүүлэгч', price: 4, desc: 'Хуаран руу, эсвэл шар туяатай даалгаврын газар руу шууд шилжинэ. G товч (утсанд 🌀).', use: 'Бүх нутагт' },
   { id: 'binoc', type: 'tool', icon: '🔭', name: 'Дуран', price: 3, desc: 'Холын зүйлийг ойртуулж харна. Z эсвэл хулганы баруун товч.', use: 'Хөвсгөл: Ойн амьтад' },
   { id: 'jacket', type: 'outfit', slot: 'outfit', icon: '🧥', name: 'Дулаан хүрэм', price: 3, desc: 'Өндөр уулын хүйтнээс хамгаална. 2300 м-ээс дээш гарахад хэрэгтэй.', use: 'Хөвсгөл: Өндрийн бүслүүр' },
   { id: 'sunhat', type: 'outfit', slot: 'hat', icon: '👒', name: 'Нарны малгай', price: 1, desc: 'Өргөн хүрээтэй, улаан туузтай малгай.' },
   { id: 'shades', type: 'outfit', slot: 'glasses', icon: '🕶️', name: 'Нарны шил', price: 2, desc: 'Говийн хурц нарнаас нүдээ хамгаална.' },
   { id: 'deel', type: 'outfit', slot: 'outfit', icon: '👘', name: 'Монгол дээл', price: 3, desc: 'Цэнхэр дээл, шар бүстэй.' },
   { id: 'horse', type: 'outfit', slot: 'mount', icon: '🐎', name: 'Морь', price: 5, desc: 'Мордвол 1,7 дахин хурдан явна.' },
+  { id: 'moto', type: 'outfit', slot: 'mount', icon: '🏍️', name: 'Мотоцикл', price: 7, desc: '2,4 дахин хурдан явна.' },
+  { id: 'car', type: 'outfit', slot: 'mount', icon: '🚙', name: 'Машин', price: 10, desc: 'Задгай дээвэртэй жийп. 3 дахин хурдан явна.' },
 ];
 const ITEM = Object.fromEntries(ITEMS.map(i => [i.id, i]));
 const LEVELS = [[0, 'Шинэ аялагч'], [8, 'Залуу судлаач'], [18, 'Газарзүйч'], [30, 'Экспедицийн ахлагч'], [42, 'Агуу аялагч']];
@@ -1281,6 +1342,37 @@ function loadSave() { try { const s = JSON.parse(localStorage.getItem(SAVE_KEY))
 const regionDone = id => S.reg[id].q >= REGIONS[id].quests.length;
 const unlocked = id => { const i = ORDER.indexOf(id); return i === 0 || regionDone(ORDER[i - 1]); };
 
+/* ================= ӨДӨР, ШӨНӨ ================= */
+// Нэг хоног тоглоомд 4 минут. Дэлхий тэнхлэгээ эргэдэг учраас өдөр шөнө солигддог (7-р анги 2.2).
+const DAY_LEN = 240, skyBase = new THREE.Color(0x9fd4f5), NIGHT_SKY = new THREE.Color(0x0c1730), DUSK = new THREE.Color(0xf0a060);
+const SUN_DAY = new THREE.Color(0xfff1d6), HEMI_DAY = new THREE.Color(0xe4f3ff), HEMI_NIGHT = new THREE.Color(0x6c80b8);
+let dayClock = DAY_LEN * .05, nightOn = false;
+const starsSky = (() => {
+  const n = 700, pos = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) { const u = Math.random(), v = Math.random() * .9 + .08, th = u * Math.PI * 2, ph = Math.acos(v); pos[i*3] = Math.sin(ph) * Math.cos(th) * 600; pos[i*3+1] = Math.cos(ph) * 600; pos[i*3+2] = Math.sin(ph) * Math.sin(th) * 600; }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  const p = new THREE.Points(g, new THREE.PointsMaterial({ color: 0xffffff, size: 2, sizeAttenuation: false, transparent: true, opacity: 0, fog: false, depthWrite: false }));
+  scene.add(p); return p;
+})();
+const moon = (() => { const m = new THREE.Mesh(new THREE.SphereGeometry(14, 20, 14), new THREE.MeshBasicMaterial({ color: 0xf4f1dc, transparent: true, opacity: 0, fog: false })); scene.add(m); return m; })();
+function dayNight(dt) {
+  dayClock += dt;
+  const ph = (dayClock / DAY_LEN) % 1, el = Math.sin(ph * Math.PI * 2);   // нарны өндөр −1..1
+  const n = smooth(.12, -.22, el), dusk = Math.max(0, 1 - Math.abs(el) / .25) * (1 - n * .6);
+  const bg = skyBase.clone().lerp(DUSK, dusk * .35).lerp(NIGHT_SKY, n * .88);
+  scene.background.copy(bg); scene.fog.color.copy(bg);
+  sun.intensity = .95 * (1 - .82 * n); sun.color.copy(SUN_DAY).lerp(DUSK, dusk * .6);
+  hemi.intensity = .78 - .4 * n; hemi.color.copy(HEMI_DAY).lerp(HEMI_NIGHT, n);
+  starsSky.material.opacity = n; starsSky.position.copy(camera.position);
+  moon.material.opacity = n; moon.position.set(camera.position.x - 260, camera.position.y + 300 * Math.max(.25, -el) + 60, camera.position.z - 380);
+  if (started && S.region) {
+    if (n > .6 && !nightOn) { nightOn = true; toast('🌙 Шөнө боллоо. Дэлхий тэнхлэгээ эргэдэг учраас өдөр шөнө солигддог.'); }
+    if (n < .3 && nightOn) { nightOn = false; toast('☀ Өглөө боллоо! Дэлхий тэнхлэгээ ≈ 24 цагт нэг эргэнэ. Энэ бол нэг хоног.'); }
+    const lab = n > .6 ? '🌙 Шөнө' : dusk > .4 ? (Math.cos(ph * Math.PI * 2) > 0 ? '🌅 Өглөө' : '🌇 Орой') : '☀ Өдөр';
+    if ($('#sDay').textContent !== lab) $('#sDay').textContent = lab;
+  }
+}
+
 /* ================= ДҮР ================= */
 let player = null, horse = null;
 function buildPlayer() {
@@ -1293,7 +1385,11 @@ function buildPlayer() {
   if (e.outfit === 'jacket') { look.jacket = true; look.shirt = 0xd63031; }
   player = makeChar(look);
   horse = null;
-  if (e.mount === 'horse') { horse = makeHorse(); player.g.add(horse); player.body.position.y = 1.55; player.legs.forEach(l => l.rotation.z = 0); }
+  const M = MOUNT[e.mount];
+  if (M) {
+    horse = M.make(); horse.userData.kind = e.mount; player.g.add(horse); player.body.position.y = M.seat;
+    if (e.mount === 'car') { player.body.position.z = -.35; player.legs.forEach(l => l.visible = false); }
+  }
   scene.add(player.g);
 }
 
@@ -1312,7 +1408,7 @@ function loadRegion(id, atSpawn) {
   // нуугдмал од
   const found = S.found[id];
   def.stars.forEach(([x, z], i) => { if (found.includes(i)) return; const m = starMesh(); m.position.set(x, groundY(x, z) + 1.6, z); add(m); W.stars.push({ i, m, x, z }); });
-  scene.background.set(def.sky); scene.fog.color.set(def.sky); hemi.groundColor.set(def.ground);
+  skyBase.set(def.sky); scene.background.set(def.sky); scene.fog.color.set(def.sky); hemi.groundColor.set(def.ground);
   if (atSpawn || !S.pos) { P.x = def.spawn.x; P.z = def.spawn.z; cam.yaw = 0; P.face = Math.PI; }
   else { P.x = S.pos.x; P.z = S.pos.z; cam.yaw = S.yaw || 0; }
   renderQuest(); renderStats(); save();
@@ -1354,7 +1450,7 @@ function renderStats() {
   $('#sLvl').innerHTML = `Түвшин ${li + 1} · ${LEVELS[li][1]}<small>${nx ? `Дараагийн түвшин: ${nx[0] - S.earned} од` : 'Хамгийн дээд түвшин!'}</small><div class="xp"><i style="width:${nx ? (S.earned - LEVELS[li][0]) / (nx[0] - LEVELS[li][0]) * 100 : 100}%"></i></div>`;
   $('#sStars').textContent = S.wallet + ' ★';
   if (W && S.region) $('#sHidden').textContent = S.found[S.region].length + '/' + W.def.stars.length;
-  if ($('#trophyN')) { const n = S.wallet + '★'; if (TOUCH && $('#trophyN').textContent !== n && started) { const b = $('#trophy'); b.classList.remove('pulse'); void b.offsetWidth; b.classList.add('pulse'); } $('#trophyN').textContent = n; $('#tbBino').hidden = !S.owned.binoc; }
+  if ($('#trophyN')) { const n = S.wallet + '★'; if (TOUCH && $('#trophyN').textContent !== n && started) { const b = $('#trophy'); b.classList.remove('pulse'); void b.offsetWidth; b.classList.add('pulse'); } $('#trophyN').textContent = n; $('#tbBino').hidden = !S.owned.binoc; $('#tbTele').hidden = !S.owned.tele; }
   $('#bag').innerHTML = ITEMS.filter(i => S.owned[i.id]).map(i => `<span title="${i.name}">${i.icon}</span>`).join('') || '<span title="Цүнх хоосон">🎒</span>';
 }
 let toastT;
@@ -1632,6 +1728,7 @@ if (TOUCH) {
   tap('#tbShop', () => togglePanel('shop'));
   tap('#tbJour', () => togglePanel('journal'));
   tap('#tbTravel', () => openPanel('travel'));
+  tap('#tbTele', () => { if (!busy && !uiOpen()) run(teleport); });
   tap('#tbBino', () => { if (S.owned.binoc) setBinoc(!binoc); else toast('Дуран алга байна. 🛒 дэлгүүрээс аваарай.'); });
   document.querySelectorAll('.tHint').forEach(el => el.hidden = false);
 }
@@ -1662,6 +1759,7 @@ addEventListener('keydown', e => {
   if (c === 'Escape') { PANELS.forEach(p => { if (!$('#' + p).hidden) closePanel(p); }); return; }
   if (panelOpen()) return;
   if (c === 'KeyE' && nearI && !busy) { run(nearI.act); return; }
+  if (c === 'KeyG') { if (!busy) run(teleport); return; }
   if (c === 'KeyZ') { if (S.owned.binoc) setBinoc(!binoc); else toast('Дуран алга байна. B дарж дэлгүүрээс аваарай.'); return; }
   if (c === 'Space') e.preventDefault();
   keys.add(c);
@@ -1742,7 +1840,7 @@ function step(dt) {
   warnT -= dt;
   if (len > 0 && !binoc) {
     mx2 /= len; mz2 /= len;
-    const sp = (keys.has('ShiftLeft') || keys.has('ShiftRight') || runOn ? 19 : 10) * (wet ? .5 : 1) * (S.equip.mount === 'horse' ? 1.7 : 1);
+    const sp = (keys.has('ShiftLeft') || keys.has('ShiftRight') || runOn ? 19 : 10) * (wet ? .5 : 1) * (MOUNT[S.equip.mount] ? MOUNT[S.equip.mount].sp : 1);
     const nx = Math.max(-325, Math.min(325, P.x + mx2 * sp * dt)), nz = Math.max(-325, Math.min(325, P.z + mz2 * sp * dt));
     const ng = groundY(nx, nz), L1 = lakeAt(nx, nz), na = altOf(ng);
     let block = L1 && ng < L1.y - 2.6 ? 'deep' : null;
@@ -1763,12 +1861,17 @@ function step(dt) {
   P.y = wy + P.jump;
   if (player) {
     player.g.position.set(P.x, P.y, P.z); player.g.rotation.y = P.face;
-    if (horse) { walkQuad(horse, P.walkT * .6, P.moving); player.legs[0].rotation.x = player.legs[1].rotation.x = -1.2; player.legs[0].rotation.z = .35; player.legs[1].rotation.z = -.35; }
+    if (horse) {
+      if (horse.userData.kind === 'horse') walkQuad(horse, P.walkT * .6, P.moving);
+      else (horse.userData.wheels || []).forEach(w => w.rotation.x = P.walkT * .9);
+      player.legs[0].rotation.x = player.legs[1].rotation.x = -1.2; player.legs[0].rotation.z = .35; player.legs[1].rotation.z = -.35;
+      player.arms[0].rotation.x = player.arms[1].rotation.x = horse.userData.kind === 'horse' ? -.3 : -1.1;
+    }
     else animChar(player, P.walkT, P.moving);
   }
 
   // камер
-  const head = (horse ? 3.6 : 2.1);
+  const MO = MOUNT[S.equip.mount], head = 2.1 + (MO ? MO.seat + .3 : 0);
   if (binoc) {
     camera.fov += (12 - camera.fov) * Math.min(1, dt * 10);
     const lp = .3 - cam.pitch, cp = Math.cos(lp);
@@ -1776,12 +1879,13 @@ function step(dt) {
     camera.lookAt(P.x + Math.sin(cam.yaw) * cp * 10, P.y + head + Math.sin(lp) * 10, P.z - Math.cos(cam.yaw) * cp * 10);
   } else {
     camera.fov += (60 - camera.fov) * Math.min(1, dt * 10);
-    const cp = Math.cos(cam.pitch), sp2 = Math.sin(cam.pitch), tx = P.x, ty = P.y + 2 + (horse ? 1.3 : 0), tz = P.z;
+    const cp = Math.cos(cam.pitch), sp2 = Math.sin(cam.pitch), tx = P.x, ty = P.y + 2 + (MO ? MO.cam : 0), tz = P.z;
     const cx = tx - Math.sin(cam.yaw) * cam.dist * cp, cz = tz + Math.cos(cam.yaw) * cam.dist * cp;
     camera.position.set(cx, Math.max(ty + cam.dist * sp2, groundY(cx, cz) + 1.2), cz);
     camera.lookAt(tx, ty, tz);
   }
   camera.updateProjectionMatrix();
+  dayNight(dt);
   sun.position.set(P.x + 60, P.y + 110, P.z + 40); sun.target.position.set(P.x, P.y, P.z);
 
   if (started && S.region) {
