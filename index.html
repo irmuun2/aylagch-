@@ -1346,7 +1346,7 @@ const unlocked = id => { const i = ORDER.indexOf(id); return i === 0 || regionDo
 // Нэг хоног тоглоомд 4 минут. Дэлхий тэнхлэгээ эргэдэг учраас өдөр шөнө солигддог (7-р анги 2.2).
 const DAY_LEN = 240, skyBase = new THREE.Color(0x9fd4f5), NIGHT_SKY = new THREE.Color(0x0c1730), DUSK = new THREE.Color(0xf0a060);
 const SUN_DAY = new THREE.Color(0xfff1d6), HEMI_DAY = new THREE.Color(0xe4f3ff), HEMI_NIGHT = new THREE.Color(0x6c80b8);
-let dayClock = DAY_LEN * .05, nightOn = false;
+let dayClock = DAY_LEN * .05, nightOn = false, nightN = 0;
 const starsSky = (() => {
   const n = 700, pos = new Float32Array(n * 3);
   for (let i = 0; i < n; i++) { const u = Math.random(), v = Math.random() * .9 + .08, th = u * Math.PI * 2, ph = Math.acos(v); pos[i*3] = Math.sin(ph) * Math.cos(th) * 600; pos[i*3+1] = Math.cos(ph) * 600; pos[i*3+2] = Math.sin(ph) * Math.sin(th) * 600; }
@@ -1359,6 +1359,8 @@ function dayNight(dt) {
   dayClock += dt;
   const ph = (dayClock / DAY_LEN) % 1, el = Math.sin(ph * Math.PI * 2);   // нарны өндөр −1..1
   const n = smooth(.12, -.22, el), dusk = Math.max(0, 1 - Math.abs(el) / .25) * (1 - n * .6);
+  nightN = smooth(.05, -.15, el);
+  lightsUpdate(nightN);
   const bg = skyBase.clone().lerp(DUSK, dusk * .35).lerp(NIGHT_SKY, n * .88);
   scene.background.copy(bg); scene.fog.color.copy(bg);
   sun.intensity = .95 * (1 - .82 * n); sun.color.copy(SUN_DAY).lerp(DUSK, dusk * .6);
@@ -1375,6 +1377,40 @@ function dayNight(dt) {
 
 /* ================= ДҮР ================= */
 let player = null, horse = null;
+// Шөнийн гэрэл: нэг SpotLight байнга байна (өдөр 0 хүчтэй), туяаны конус ба чийдэнгийн гэрэлтэлт
+const headLight = new THREE.SpotLight(0xfff1c8, 0, 70, .5, .55, 1.2);
+headLight.castShadow = false;
+let beams = [], torch = null, lampMeshes = [];
+function beamMesh(len, r) {
+  const m = new THREE.Mesh(new THREE.ConeGeometry(r, len, 18, 1, true), new THREE.MeshBasicMaterial({ color: 0xfff1c8, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending }));
+  m.rotation.x = -Math.PI / 2 + .1;
+  return m;
+}
+function attachLights(kind) {
+  beams = []; lampMeshes = []; torch = null;
+  const L = { none: [[.62, 1.4, .45]], horse: [[.62, 2.95, .65]], moto: [[0, 1.2, 1.15]], car: [[-.6, 1.15, 1.75], [.6, 1.15, 1.75]] }[kind] || [[.62, 1.4, .45]];
+  const c = L.reduce((a, p) => [a[0] + p[0] / L.length, a[1] + p[1] / L.length, a[2] + p[2] / L.length], [0, 0, 0]);
+  headLight.position.set(c[0], c[1], c[2]);
+  headLight.target.position.set(c[0], 0, c[2] + 16);
+  headLight.angle = kind === 'car' ? .62 : kind === 'moto' ? .5 : .42;
+  player.g.add(headLight, headLight.target);
+  const len = kind === 'car' || kind === 'moto' ? 11 : 8;
+  L.forEach(p => { const b = beamMesh(len, kind === 'car' || kind === 'moto' ? 2.2 : 1.6); b.position.set(p[0], p[1] - .45, p[2] + len / 2); player.g.add(b); beams.push(b); });
+  if (kind === 'none' || kind === 'horse') {   // гар чийдэн баруун гарт
+    torch = new THREE.Group();
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(.07, .09, .4, 8), mat(0x333333)); body.rotation.x = Math.PI / 2; torch.add(body);
+    const lens = new THREE.Mesh(new THREE.CylinderGeometry(.1, .1, .04, 10), mat(0xfff1b0, { emissive: 0xffd54a, emissiveIntensity: 0 })); lens.rotation.x = Math.PI / 2; lens.position.z = .21; torch.add(lens);
+    torch.position.set(0, -.75, .2); player.arms[1].add(torch); lampMeshes.push(lens);
+  }
+  player.g.traverse(o => { if (o.isMesh && o.material && o.material.emissive && o.material.emissive.getHex() === 0xffd54a && !lampMeshes.includes(o)) lampMeshes.push(o); });
+}
+function lightsUpdate(n) {
+  const veh = horse && horse.userData.kind !== 'horse';
+  headLight.intensity = n * (veh ? 2.4 : 1.7);
+  beams.forEach(b => b.material.opacity = n * (veh ? .12 : .09));
+  lampMeshes.forEach(m => m.material.emissiveIntensity = (veh ? .8 : 0) + n * 2);
+  if (torch) torch.visible = n > .05;
+}
 function buildPlayer() {
   if (player) scene.remove(player.g);
   const e = S.equip;
@@ -1390,6 +1426,8 @@ function buildPlayer() {
     horse = M.make(); horse.userData.kind = e.mount; player.g.add(horse); player.body.position.y = M.seat;
     if (e.mount === 'car') { player.body.position.z = -.35; player.legs.forEach(l => l.visible = false); }
   }
+  attachLights(M ? e.mount : 'none');
+  lightsUpdate(nightN);
   scene.add(player.g);
 }
 
@@ -1867,7 +1905,7 @@ function step(dt) {
       player.legs[0].rotation.x = player.legs[1].rotation.x = -1.2; player.legs[0].rotation.z = .35; player.legs[1].rotation.z = -.35;
       player.arms[0].rotation.x = player.arms[1].rotation.x = horse.userData.kind === 'horse' ? -.3 : -1.1;
     }
-    else animChar(player, P.walkT, P.moving);
+    else { animChar(player, P.walkT, P.moving); if (torch && torch.visible) player.arms[1].rotation.x = -1.1; }
   }
 
   // камер
