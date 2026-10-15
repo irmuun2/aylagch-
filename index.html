@@ -150,6 +150,26 @@ h3.t{font-family:var(--f-display);font-weight:400;margin:0;font-size:22px}
 #loading{position:fixed;inset:0;display:grid;place-items:center;font-weight:800;color:var(--muted);padding:20px;text-align:center}
 :focus-visible{outline:3px solid var(--sun);outline-offset:2px}
 @media (max-width:1000px){#legend{display:none} #mapC{width:min(86vh,92vw)} #keys{display:none}}
+/* утсыг босоо барьсан үед бүх тоглоомыг 90° эргүүлнэ */
+#root{position:fixed;left:0;top:0;width:100%;height:100%;overflow:hidden}
+html.rot #root{transform-origin:0 0;transform:rotate(90deg) translateY(-100%)}
+html.rot.rotL #root{transform:rotate(-90deg) translateX(-100%)}
+.xClose{position:absolute;top:calc(10px + env(safe-area-inset-top, 0px));right:calc(10px + env(safe-area-inset-right, 0px));width:48px;height:48px;border-radius:50%;border:2px solid rgba(255,255,255,.35);background:var(--sun);color:#1c1606;font:900 22px/1 var(--f-body);z-index:2;display:grid;place-items:center;padding:0}
+#qBtn{display:none}
+html.touch #qBtn{display:grid;position:fixed;top:8px;left:calc(8px + env(safe-area-inset-left, 0px));z-index:13;width:46px;height:46px;border-radius:50%;border:2px solid rgba(255,255,255,.4);background:var(--sun);color:#1c1606;font:900 24px/1 var(--f-display);place-items:center;padding:0;pointer-events:auto}
+html.touch #qBtn small{position:absolute;right:-6px;bottom:-6px;font:900 11px/1 var(--f-body);background:var(--panel);color:var(--ink);border-radius:999px;padding:3px 6px;border:1px solid var(--panel-line)}
+html.touch #qBtn.pulse{animation:qpulse 1s ease-in-out 4}
+@keyframes qpulse{50%{transform:scale(1.18);box-shadow:0 0 0 8px rgba(255,213,74,.35)}}
+html.touch #quest{display:none;top:62px;left:calc(8px + env(safe-area-inset-left, 0px));pointer-events:auto;z-index:13;max-height:calc(100% - 80px);overflow:auto}
+html.touch #quest.open{display:block}
+html.rot #quest{width:min(240px,33vh)}
+html.rot #stats{max-width:34vh}
+html.rot #compass{width:30vh}
+html.rot #prompt{max-width:44vh}
+html.rot #dialog{max-height:78vw;width:min(720px,calc(100vh - 24px))}
+html.rot .box{max-height:88vw}
+html.rot #mapC{width:min(84vw,92vh)}
+html.rot #toast{max-width:90vh}
 /* утас, планшет */
 #touchUI{position:fixed;inset:0;pointer-events:none;z-index:12}
 #joy{position:absolute;left:calc(22px + env(safe-area-inset-left, 0px));bottom:calc(22px + env(safe-area-inset-bottom, 0px));width:150px;height:150px;border-radius:50%;background:rgba(18,28,40,.45);border:2px solid rgba(255,255,255,.25);pointer-events:auto;touch-action:none}
@@ -193,12 +213,14 @@ html.touch .big{padding:10px 20px;font-size:16px}
 </style>
 </head>
 <body>
+<div id="root">
 <div id="loading">Ачааллаж байна…</div>
 <canvas id="c" tabindex="0"></canvas>
 
 <div id="hud" hidden>
   <div id="compass"><div class="needle"></div></div>
   <div id="heading"></div>
+  <button id="qBtn" aria-label="Даалгавар">?<small id="qProg"></small></button>
   <div id="quest" class="panel"></div>
   <div id="stats" class="panel">
     <div class="lvl" id="sLvl"></div>
@@ -251,6 +273,7 @@ html.touch .big{padding:10px 20px;font-size:16px}
 </div>
 
 <div id="mapView" class="overlay" hidden>
+  <button class="xClose" data-close="mapView" aria-label="Газрын зургийг хаах">✕</button>
   <div id="mapWrap">
     <canvas id="mapC" width="640" height="640"></canvas>
     <div id="legend" class="panel">
@@ -335,6 +358,7 @@ html.touch .big{padding:10px 20px;font-size:16px}
   </div>
 </div>
 
+</div>
 <script src="three.min.js"></script>
 <script>window.THREE || document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"><\/script>')</script>
 <script>
@@ -1292,6 +1316,9 @@ function updateCompass(head) {
   const h = ((head % 360) + 360) % 360;
   $('#heading').textContent = 'Чиглэл: ' + DIR_FULL[DIRS[Math.round(h / 45) % 8][1]] + ' · ' + Math.round(h) + '°';
 }
+let questKey = '';
+$('#qBtn').addEventListener('click', e => { e.stopPropagation(); $('#quest').classList.toggle('open'); $('#qBtn').classList.remove('pulse'); });
+$('#quest').addEventListener('click', () => $('#quest').classList.remove('open'));
 function renderQuest() {
   if (!W || !S.region) return;
   const def = W.def, R = reg(), el = $('#quest');
@@ -1299,6 +1326,8 @@ function renderQuest() {
   if (R.q >= def.quests.length) el.innerHTML = `<div class="topic">${def.name}</div><h2>Бүх даалгавар биеллээ</h2><ul><li class="${ORDER.every(regionDone) ? 'done' : ''}">${ORDER.every(regionDone) ? 'Бүх нутгаар аялж дууслаа!' : '<kbd>T</kbd> дарж дараагийн нутгаа сонго'}</li></ul><div class="prog">${prog}</div>`;
   else { const Q = def.quests[R.q]; el.innerHTML = `<div class="topic">${def.name} · ${R.q + 1}/${def.quests.length} · ${Q.topic}</div><h2>${Q.title}</h2><ul>${def.objective(R).map(o => `<li class="${o.done ? 'done' : o.need ? 'need' : ''}">${tt(o.t)}</li>`).join('')}</ul><div class="prog">${prog}</div>`; }
   Object.values(W.npc).forEach(n => n.mark.visible = !!def.needsTalk(n.id, R));
+  $('#qProg').textContent = Math.min(R.q + 1, def.quests.length) + '/' + def.quests.length;
+  if (TOUCH && el.innerHTML !== questKey) { if (questKey) { const b = $('#qBtn'); b.classList.remove('pulse'); void b.offsetWidth; b.classList.add('pulse'); } questKey = el.innerHTML; }
   renderStats();
 }
 function renderStats() {
@@ -1510,6 +1539,7 @@ function openPanel(id) {
 function closePanel(id) { if (id === 'travel' && tFirst) return; $('#' + id).hidden = true; if (!uiOpen()) lock(); }
 function togglePanel(id) { $('#' + id).hidden ? openPanel(id) : closePanel(id); }
 document.querySelectorAll('[data-close]').forEach(b => b.onclick = () => closePanel(b.dataset.close));
+['mapView', 'journal', 'shop'].forEach(id => $('#' + id).addEventListener('click', e => { if (e.target.id === id || e.target.id === 'mapWrap') closePanel(id); }));
 function showFinale() {
   PANELS.forEach(p => $('#' + p).hidden = true);
   $('#fStars').textContent = `Түвшин ${levelOf(S.earned) + 1} · ${LEVELS[levelOf(S.earned)][1]} · ${S.earned} ★`;
@@ -1556,7 +1586,8 @@ const joy = { id: null, x: 0, y: 0, cx: 0, cy: 0 };
 let look = null, runOn = false, touchShown = null;
 if (TOUCH) {
   const base = $('#joy'), knob = $('#joyK'), R0 = 60;
-  const moveJoy = p => { let dx = p.clientX - joy.cx, dy = p.clientY - joy.cy; const m = Math.hypot(dx, dy); if (m > R0) { dx *= R0 / m; dy *= R0 / m; } joy.x = dx / R0; joy.y = dy / R0; knob.style.transform = 'translate(' + dx + 'px,' + dy + 'px)'; };
+  const loc = (dx, dy) => !ROT ? [dx, dy] : ROTL ? [-dy, dx] : [dy, -dx];
+  const moveJoy = p => { let [dx, dy] = loc(p.clientX - joy.cx, p.clientY - joy.cy); const m = Math.hypot(dx, dy); if (m > R0) { dx *= R0 / m; dy *= R0 / m; } joy.x = dx / R0; joy.y = dy / R0; knob.style.transform = 'translate(' + dx + 'px,' + dy + 'px)'; };
   base.addEventListener('touchstart', e => { const p = e.changedTouches[0], r = base.getBoundingClientRect(); joy.id = p.identifier; joy.cx = r.left + r.width / 2; joy.cy = r.top + r.height / 2; moveJoy(p); e.preventDefault(); }, { passive: false });
   canvas.addEventListener('touchstart', e => { const p = e.changedTouches[0]; if (!look) look = { id: p.identifier, x: p.clientX, y: p.clientY }; e.preventDefault(); }, { passive: false });
   addEventListener('touchmove', e => {
@@ -1564,8 +1595,9 @@ if (TOUCH) {
       if (p.identifier === joy.id) moveJoy(p);
       else if (look && p.identifier === look.id && !uiOpen()) {
         const k = binoc ? .0016 : .0065;
-        cam.yaw += (p.clientX - look.x) * k;
-        cam.pitch = Math.max(.05, Math.min(1.25, cam.pitch + (p.clientY - look.y) * k * .7));
+        const [ddx, ddy] = loc(p.clientX - look.x, p.clientY - look.y);
+        cam.yaw += ddx * k;
+        cam.pitch = Math.max(.05, Math.min(1.25, cam.pitch + ddy * k * .7));
         look.x = p.clientX; look.y = p.clientY;
       }
     }
@@ -1625,8 +1657,9 @@ function begin(s) {
   $('#start').hidden = true; $('#hud').hidden = false; started = true;
   if (TOUCH) {
     const de = document.documentElement;
-    if (de.requestFullscreen) de.requestFullscreen().catch(() => {});
-    if (innerHeight > innerWidth) setTimeout(() => toast('Утсаа хэвтээ эргүүлбэл тоглоход илүү тохиромжтой'), 1500);
+    startMotion();
+    const lockLand = () => { try { const o = screen.orientation; if (o && o.lock) o.lock('landscape').catch(() => {}); } catch (e) {} };
+    if (de.requestFullscreen) de.requestFullscreen().then(lockLand).catch(() => {}); else lockLand();
   }
   if (S.region) { loadRegion(S.region, false); if (ORDER.every(regionDone)) showFinale(); else lock(); }
   else { tFirst = true; tSel = 'hangai'; openPanel('travel'); }
@@ -1639,7 +1672,32 @@ if (saved && saved.region) { $('#bCont').hidden = false; $('#bCont').onclick = (
 /* ================= ГОЛ ДАВТАЛТ ================= */
 const clock = new THREE.Clock();
 let hudT = 0, t = 0, warnT = 0, nearI = null, saveT = 0;
-function resize() { renderer.setSize(innerWidth, innerHeight, false); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); }
+let ROT = false, ROTL = false;
+const IOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+// Утасны хөдөлгөөн мэдрэгч: аль тал руу нь хэвтүүлж барьсныг таньж, дэлгэцийг тийш нь эргүүлнэ
+function onMotion(e) {
+  const g = e.accelerationIncludingGravity; if (!g || g.x == null) return;
+  const x = IOS ? -g.x : g.x;   // iOS хүндийн хүчийг эсрэг тэмдэгтэй өгдөг
+  const L = x < -5 ? true : x > 5 ? false : ROTL;
+  if (L !== ROTL) { ROTL = L; document.documentElement.classList.toggle('rotL', ROTL); P.menuTop = 0; }
+}
+function startMotion() {
+  if (!TOUCH || startMotion.on) return;
+  const go = () => { addEventListener('devicemotion', onMotion); startMotion.on = true; };
+  const DM = window.DeviceMotionEvent;
+  if (DM && typeof DM.requestPermission === 'function') DM.requestPermission().then(r => { if (r === 'granted') go(); }).catch(() => {});
+  else if (DM) go();
+}
+if (TOUCH && !(window.DeviceMotionEvent && typeof DeviceMotionEvent.requestPermission === 'function')) startMotion();
+function resize() {
+  ROT = TOUCH && innerHeight > innerWidth;
+  document.documentElement.classList.toggle('rot', ROT);
+  const w = ROT ? innerHeight : innerWidth, h = ROT ? innerWidth : innerHeight, root = $('#root');
+  root.style.width = w + 'px'; root.style.height = h + 'px';
+  renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
+  P.menuTop = 0;
+}
+addEventListener('orientationchange', () => setTimeout(resize, 200));
 addEventListener('resize', resize); resize();
 // урьдчилан харагдах дэвсгэр (эхлэлийн цонхны ард)
 W = { def: REGIONS.hangai, npc: {}, inter: [], talk: {}, tick: () => {}, marks: () => [], distFrom: () => null, mapOpened: () => {}, stars: [] };
@@ -1659,7 +1717,7 @@ function step(dt) {
     if (keys.has('Space') && P.jump === 0) { P.vy = 9; P.jump = .001; }
     if (TOUCH && Math.hypot(joy.x, joy.y) > .15) { mx2 += fx * -joy.y + rx * joy.x; mz2 += fz * -joy.y + rz * joy.x; }
   }
-  if (TOUCH) { const show = started && !uiOpen(); if (show !== touchShown) { touchShown = show; $('#touchUI').hidden = !show; } if (show) { const b = $('#stats').getBoundingClientRect().bottom + 8; if (Math.abs(b - (P.menuTop || 0)) > 1) { P.menuTop = b; $('#tMenu').style.setProperty('--menuTop', b + 'px'); } } }
+  if (TOUCH) { const show = started && !uiOpen(); if (show !== touchShown) { touchShown = show; $('#touchUI').hidden = !show; } if (show) { const st = $('#stats'), b = st.offsetTop + st.offsetHeight + 8; if (Math.abs(b - (P.menuTop || 0)) > 1) { P.menuTop = b; $('#tMenu').style.setProperty('--menuTop', b + 'px'); } } }
   const len = Math.hypot(mx2, mz2), gy0 = groundY(P.x, P.z), L0 = lakeAt(P.x, P.z), wet = L0 && gy0 < L0.y - .4;
   warnT -= dt;
   if (len > 0 && !binoc) {
