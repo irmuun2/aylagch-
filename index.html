@@ -150,6 +150,45 @@ h3.t{font-family:var(--f-display);font-weight:400;margin:0;font-size:22px}
 #loading{position:fixed;inset:0;display:grid;place-items:center;font-weight:800;color:var(--muted);padding:20px;text-align:center}
 :focus-visible{outline:3px solid var(--sun);outline-offset:2px}
 @media (max-width:1000px){#legend{display:none} #mapC{width:min(86vh,92vw)} #keys{display:none}}
+/* утас, планшет */
+#touchUI{position:fixed;inset:0;pointer-events:none;z-index:12}
+#joy{position:absolute;left:calc(22px + env(safe-area-inset-left, 0px));bottom:calc(22px + env(safe-area-inset-bottom, 0px));width:150px;height:150px;border-radius:50%;background:rgba(18,28,40,.45);border:2px solid rgba(255,255,255,.25);pointer-events:auto;touch-action:none}
+#joyK{position:absolute;left:50%;top:50%;width:64px;height:64px;margin:-32px 0 0 -32px;border-radius:50%;background:rgba(255,255,255,.75);pointer-events:none}
+.tbtn{pointer-events:auto;touch-action:none;position:absolute;border-radius:50%;border:2px solid rgba(255,255,255,.3);background:rgba(18,28,40,.7);color:var(--ink);font:900 14px/1.1 var(--f-body);display:grid;place-items:center;text-align:center;user-select:none;-webkit-user-select:none;padding:4px}
+#tAct{right:calc(26px + env(safe-area-inset-right, 0px));bottom:calc(36px + env(safe-area-inset-bottom, 0px));width:96px;height:96px;background:var(--sun);color:#1c1606;font-size:15px}
+#tAct span{font-size:30px;display:block}
+#tAct.off{opacity:.35;background:rgba(18,28,40,.7);color:var(--ink)}
+#tJump{right:calc(136px + env(safe-area-inset-right, 0px));bottom:calc(26px + env(safe-area-inset-bottom, 0px));width:66px;height:66px}
+#tRun{right:calc(136px + env(safe-area-inset-right, 0px));bottom:calc(104px + env(safe-area-inset-bottom, 0px));width:66px;height:66px}
+#tRun.on{background:var(--ok);color:#06210f}
+#tMenu{position:absolute;right:calc(10px + env(safe-area-inset-right, 0px));top:var(--menuTop,120px);display:flex;gap:6px;pointer-events:auto}
+#tMenu button{width:44px;height:44px;border-radius:14px;border:2px solid rgba(255,255,255,.25);background:rgba(18,28,40,.7);font-size:22px;touch-action:none;padding:0}
+html.touch #keys,html.touch #bag,html.touch .ctrls{display:none!important}
+html.touch #quest{width:min(240px,33vw);padding:7px 10px}
+html.touch #quest h2{font-size:15px;margin:1px 0 4px}
+html.touch #quest ul{font-size:12px;gap:2px}
+html.touch #quest .topic{font-size:9px}
+html.touch #quest .prog{margin-top:5px}
+html.touch #stats{min-width:0;padding:6px 10px;gap:1px;max-width:34vw}
+html.touch #stats .row{font-size:11px;gap:8px}
+html.touch #stats .row b{font-size:12px}
+html.touch #stats .lvl{font-size:11px;padding-bottom:2px}
+html.touch #compass{width:30vw;height:34px;top:8px}
+html.touch #compass .it.main{font-size:15px;padding-top:6px}
+html.touch #compass .it{font-size:11px}
+html.touch #heading{top:46px;font-size:10px}
+html.touch #toast{top:58px;font-size:13px}
+html.touch #prompt{bottom:calc(16px + env(safe-area-inset-bottom, 0px));font-size:13px;max-width:44vw;white-space:normal;text-align:center}
+html.touch #dialog{bottom:6px;padding:10px 12px;grid-template-columns:40px 1fr;gap:10px;max-height:78vh;overflow:auto}
+html.touch #dialog .face{width:40px;height:40px;font-size:18px}
+html.touch #dialog .txt{font-size:14px;line-height:1.4}
+html.touch #dialog .opts{gap:6px;margin-top:8px}
+html.touch #dialog .opts button{padding:8px 10px;font-size:13px}
+html.touch #dialog .next{padding:10px 18px}
+html.touch .box{padding:14px}
+html.touch #start h1,html.touch #finale h1{font-size:28px}
+html.touch .big{padding:10px 20px;font-size:16px}
+@media (max-width:600px){#dialog .opts{grid-template-columns:1fr}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
@@ -182,6 +221,19 @@ h3.t{font-family:var(--f-display);font-weight:400;margin:0;font-size:22px}
     <span><kbd>Esc</kbd> хулганы сум</span>
   </div>
   <div id="toast" class="panel"></div>
+  <div id="touchUI" hidden>
+    <div id="joy"><div id="joyK"></div></div>
+    <button class="tbtn off" id="tAct"><span>✋</span>Хийх</button>
+    <button class="tbtn" id="tJump">Үсрэх</button>
+    <button class="tbtn" id="tRun">Гүйх</button>
+    <div id="tMenu">
+      <button id="tbMap" aria-label="Газрын зураг">🗺️</button>
+      <button id="tbShop" aria-label="Дэлгүүр">🛒</button>
+      <button id="tbJour" aria-label="Аяллын тэмдэглэл">📖</button>
+      <button id="tbTravel" aria-label="Монголын зургаар аялах">🧭</button>
+      <button id="tbBino" aria-label="Дуран">🔭</button>
+    </div>
+  </div>
   <div id="cross" hidden></div>
 </div>
 <div id="binoc" hidden><span>Дуран · <kbd>Z</kbd> эсвэл баруун товчийг суллавал хаагдана</span></div>
@@ -253,6 +305,7 @@ h3.t{font-family:var(--f-display);font-weight:400;margin:0;font-size:22px}
   <div class="box panel">
     <h1>Газарзүйч аялагч</h1>
     <p>Монгол орны гурван нутгаар аялж, нутгийн хүмүүсийн даалгаврыг биелүүлээрэй. Цуглуулсан одоороо аяллын хэрэгсэл, хувцас авч, дүрээ хөгжүүлнэ. Даалгавар бүр 7-р ангийн газар зүйн нэг сэдэвтэй.</p>
+    <p class="tHint" hidden style="font-size:14px;color:var(--muted)">Утсаар тоглохдоо: зүүн доод дугуйгаар алхана, дэлгэцийг хуруугаараа шударч эргэж харна, шар ✋ товчоор ярина. Утсаа <b style="color:var(--sun)">хэвтээ</b> барьвал илүү тохиромжтой.</p>
     <div class="ctrls">
       <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / сум</span><span>Алхах (<kbd>Shift</kbd> гүйх, <kbd>Space</kbd> үсрэх)</span>
       <span>Хулгана</span><span>Эргэж харах. <kbd>Esc</kbd> дарвал хулганы сум гарна.</span>
@@ -312,9 +365,13 @@ let seed = 7;
 const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
 
 /* ================= THREE ҮНДЭС ================= */
+// Утас, планшет: хуруугаар удирдана, графикийг хөнгөлнө
+const TOUCH = matchMedia('(pointer: coarse)').matches;
+const QUALITY = TOUCH ? .55 : 1;
+document.documentElement.classList.toggle('touch', TOUCH);
 const canvas = $('#c');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setPixelRatio(Math.min(devicePixelRatio, TOUCH ? 1.5 : 2));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 const scene = new THREE.Scene();
@@ -325,7 +382,7 @@ const hemi = new THREE.HemisphereLight(0xe4f3ff, 0x6b8f4e, 0.78);
 scene.add(hemi);
 const sun = new THREE.DirectionalLight(0xfff1d6, 0.95);
 sun.castShadow = true;
-sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.mapSize.set(TOUCH ? 1024 : 2048, TOUCH ? 1024 : 2048);
 Object.assign(sun.shadow.camera, { left: -60, right: 60, top: 60, bottom: -60, near: 1, far: 340 });
 sun.shadow.camera.updateProjectionMatrix();
 sun.shadow.bias = -0.0008;
@@ -609,7 +666,7 @@ REGIONS.hangai = (() => {
     PEAK = findPeak(-40, -262, 40);
     makeFlag(BASE.x, BASE.z, 0xffd54a, 'Уулын бэл'); makeFlag(PEAK.x, PEAK.z, 0xe74c3c, 'Орой');
     FORMS.forEach(makeSign);
-    const spots = []; for (let t = 0; t < 6000 && spots.length < 340; t++) { const x = -330 + rnd()*660, z = -330 + rnd()*230, h = groundY(x, z); if (h > 13 && h < 36 && polyDist(RIVER, x, z) > 8 && Math.hypot(x - PEAK.x, z - PEAK.z) > 14) spots.push([x, h, z, .8 + rnd()*.7]); }
+    const spots = []; for (let t = 0; t < 6000 && spots.length < 340 * QUALITY; t++) { const x = -330 + rnd()*660, z = -330 + rnd()*230, h = groundY(x, z); if (h > 13 && h < 36 && polyDist(RIVER, x, z) > 8 && Math.hypot(x - PEAK.x, z - PEAK.z) > 14) spots.push([x, h, z, .8 + rnd()*.7]); }
     instTrees(spots);
     const rocks = []; for (let t = 0; t < 3000 && rocks.length < 120; t++) { const x = -330 + rnd()*660, z = -330 + rnd()*660, h = groundY(x, z); if ((h > 20 || rnd() < .08) && polyDist(RIVER, x, z) > 6 && Math.hypot(x, z - 10) > 25) rocks.push([x, h, z, .5 + rnd()*1.6]); }
     instRocks(rocks);
@@ -1019,7 +1076,7 @@ REGIONS.khuvsgul = (() => {
     makeFlag(BASEF.x, BASEF.z, 0xffd54a, 'Хэмжилтийн цэг');
     makeFlag(PEAK.x, PEAK.z, 0xe74c3c, 'Орой');
     const L = def.lakes[0], spots = [];
-    for (let t = 0; t < 14000 && spots.length < 1100; t++) {
+    for (let t = 0; t < 14000 && spots.length < 1100 * QUALITY; t++) {
       const x = -330 + rnd()*660, z = -330 + rnd()*660, h = groundY(x, z);
       if (h > 1 && h < 52 && h > L.y + 1.5 && !CLEAR.some(([cx, cz]) => Math.hypot(x - cx, z - cz) < 26) && !NEEDLE.some(n => Math.hypot(x - n.x, z - n.z) < 4) && Math.abs(x - BASEF.x) + Math.abs(z) > 6) spots.push([x, h, z, .9 + rnd()*.8]);
     }
@@ -1240,7 +1297,7 @@ function renderQuest() {
   const def = W.def, R = reg(), el = $('#quest');
   const prog = def.quests.map((_, i) => `<i class="${i < R.q ? 'on' : ''}"></i>`).join('');
   if (R.q >= def.quests.length) el.innerHTML = `<div class="topic">${def.name}</div><h2>Бүх даалгавар биеллээ</h2><ul><li class="${ORDER.every(regionDone) ? 'done' : ''}">${ORDER.every(regionDone) ? 'Бүх нутгаар аялж дууслаа!' : '<kbd>T</kbd> дарж дараагийн нутгаа сонго'}</li></ul><div class="prog">${prog}</div>`;
-  else { const Q = def.quests[R.q]; el.innerHTML = `<div class="topic">${def.name} · ${R.q + 1}/${def.quests.length} · ${Q.topic}</div><h2>${Q.title}</h2><ul>${def.objective(R).map(o => `<li class="${o.done ? 'done' : o.need ? 'need' : ''}">${o.t}</li>`).join('')}</ul><div class="prog">${prog}</div>`; }
+  else { const Q = def.quests[R.q]; el.innerHTML = `<div class="topic">${def.name} · ${R.q + 1}/${def.quests.length} · ${Q.topic}</div><h2>${Q.title}</h2><ul>${def.objective(R).map(o => `<li class="${o.done ? 'done' : o.need ? 'need' : ''}">${tt(o.t)}</li>`).join('')}</ul><div class="prog">${prog}</div>`; }
   Object.values(W.npc).forEach(n => n.mark.visible = !!def.needsTalk(n.id, R));
   renderStats();
 }
@@ -1252,7 +1309,14 @@ function renderStats() {
   $('#bag').innerHTML = ITEMS.filter(i => S.owned[i.id]).map(i => `<span title="${i.name}">${i.icon}</span>`).join('') || '<span title="Цүнх хоосон">🎒</span>';
 }
 let toastT;
-function toast(t) { const e = $('#toast'); e.innerHTML = t; e.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => e.classList.remove('on'), 2800); }
+const TICON = { E: '✋', M: '🗺️', B: '🛒', J: '📖', T: '🧭', Z: '🔭' };
+const tt = s => !TOUCH ? s : String(s)
+  .replace(/<b>([EMBJTZ])<\/b>/g, (m, k) => '<b>' + TICON[k] + '</b>')
+  .replace(/\(([EMBJTZ])\)/g, (m, k) => '(' + TICON[k] + ')')
+  .replace(/(^|[\s(])([EMBJTZ]) (дарж|дарвал|товч)/g, (m, a, k, w) => a + TICON[k] + ' ' + w)
+  .replace(/Хулганаараа эргэж/g, 'Дэлгэцээ шударч эргэж')
+  .replace(/хулганы <b>баруун товч<\/b>-ийг дарж/g, '🔭 товчийг дарж');
+function toast(t) { const e = $('#toast'); e.innerHTML = tt(t); e.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => e.classList.remove('on'), 2800); }
 function set(o) { Object.assign(reg(), o); renderQuest(); save(); }
 function addStars(n, earned = true) {
   const before = levelOf(S.earned);
@@ -1265,6 +1329,7 @@ function addStars(n, earned = true) {
 /* ================= ЯРИА, АСУУЛТ ================= */
 const D = { open: false, onNext: null, onOpt: null, at: 0 };
 function showBox(w, html, fact) {
+  html = tt(html);
   unlock();
   const d = $('#dialog'); d.hidden = false; d.classList.toggle('fact', !!fact);
   $('#dFace').textContent = w.short; $('#dFace').style.background = w.color;
@@ -1458,11 +1523,12 @@ $('#fRestart').onclick = () => { try { localStorage.removeItem(SAVE_KEY); } catc
 const locked = () => document.pointerLockElement === canvas;
 let lockFailed = false;
 function lock() {
+  if (TOUCH) return;
   if (!started || locked() || uiOpen() || !canvas.requestPointerLock) return;
   try { const p = canvas.requestPointerLock(); if (p && p.catch) p.catch(() => { lockFailed = true; updatePause(); }); } catch (e) { lockFailed = true; }
 }
 function unlock() { if (locked()) document.exitPointerLock(); }
-function updatePause() { $('#pause').hidden = !started || locked() || uiOpen(); }
+function updatePause() { $('#pause').hidden = TOUCH || !started || locked() || uiOpen(); }
 document.addEventListener('pointerlockchange', () => { if (!locked()) { keys.clear(); setBinoc(false); } updatePause(); });
 document.addEventListener('pointerlockerror', () => { lockFailed = true; updatePause(); });
 $('#pause').onclick = () => lock();
@@ -1483,6 +1549,39 @@ function setBinoc(on) {
   binoc = !!on && !!S.owned.binoc; binocHold = binoc && !!on;
   $('#binoc').hidden = !binoc; $('#cross').hidden = !binoc;
   if (player) player.g.visible = !binoc;
+}
+
+/* ================= ХУРУУ (утас) ================= */
+const joy = { id: null, x: 0, y: 0, cx: 0, cy: 0 };
+let look = null, runOn = false, touchShown = null;
+if (TOUCH) {
+  const base = $('#joy'), knob = $('#joyK'), R0 = 60;
+  const moveJoy = p => { let dx = p.clientX - joy.cx, dy = p.clientY - joy.cy; const m = Math.hypot(dx, dy); if (m > R0) { dx *= R0 / m; dy *= R0 / m; } joy.x = dx / R0; joy.y = dy / R0; knob.style.transform = 'translate(' + dx + 'px,' + dy + 'px)'; };
+  base.addEventListener('touchstart', e => { const p = e.changedTouches[0], r = base.getBoundingClientRect(); joy.id = p.identifier; joy.cx = r.left + r.width / 2; joy.cy = r.top + r.height / 2; moveJoy(p); e.preventDefault(); }, { passive: false });
+  canvas.addEventListener('touchstart', e => { const p = e.changedTouches[0]; if (!look) look = { id: p.identifier, x: p.clientX, y: p.clientY }; e.preventDefault(); }, { passive: false });
+  addEventListener('touchmove', e => {
+    for (const p of e.changedTouches) {
+      if (p.identifier === joy.id) moveJoy(p);
+      else if (look && p.identifier === look.id && !uiOpen()) {
+        const k = binoc ? .0016 : .0065;
+        cam.yaw += (p.clientX - look.x) * k;
+        cam.pitch = Math.max(.05, Math.min(1.25, cam.pitch + (p.clientY - look.y) * k * .7));
+        look.x = p.clientX; look.y = p.clientY;
+      }
+    }
+  }, { passive: true });
+  const endT = e => { for (const p of e.changedTouches) { if (p.identifier === joy.id) { joy.id = null; joy.x = joy.y = 0; knob.style.transform = ''; } if (look && p.identifier === look.id) look = null; } };
+  addEventListener('touchend', endT); addEventListener('touchcancel', endT);
+  const tap = (sel, fn) => $(sel).addEventListener('touchstart', e => { e.preventDefault(); e.stopPropagation(); fn(); }, { passive: false });
+  tap('#tAct', () => { if (nearI && !busy && !uiOpen()) run(nearI.act); });
+  tap('#tJump', () => { if (P.jump === 0 && !uiOpen()) { P.vy = 9; P.jump = .001; } });
+  tap('#tRun', () => { runOn = !runOn; $('#tRun').classList.toggle('on', runOn); });
+  tap('#tbMap', () => togglePanel('mapView'));
+  tap('#tbShop', () => togglePanel('shop'));
+  tap('#tbJour', () => togglePanel('journal'));
+  tap('#tbTravel', () => openPanel('travel'));
+  tap('#tbBino', () => { if (S.owned.binoc) setBinoc(!binoc); else toast('Дуран алга байна. 🛒 дэлгүүрээс аваарай.'); });
+  document.querySelectorAll('.tHint').forEach(el => el.hidden = false);
 }
 
 /* ================= ГАР ================= */
@@ -1524,6 +1623,11 @@ function begin(s) {
   ['hangai', 'gobi', 'khuvsgul'].forEach(id => { S.reg[id] = S.reg[id] || freshReg(); S.found[id] = S.found[id] || []; });
   buildPlayer();
   $('#start').hidden = true; $('#hud').hidden = false; started = true;
+  if (TOUCH) {
+    const de = document.documentElement;
+    if (de.requestFullscreen) de.requestFullscreen().catch(() => {});
+    if (innerHeight > innerWidth) setTimeout(() => toast('Утсаа хэвтээ эргүүлбэл тоглоход илүү тохиромжтой'), 1500);
+  }
   if (S.region) { loadRegion(S.region, false); if (ORDER.every(regionDone)) showFinale(); else lock(); }
   else { tFirst = true; tSel = 'hangai'; openPanel('travel'); }
   renderStats();
@@ -1553,12 +1657,14 @@ function step(dt) {
     if (keys.has('KeyD') || keys.has('ArrowRight')) { mx2 += rx; mz2 += rz; }
     if (keys.has('KeyA') || keys.has('ArrowLeft')) { mx2 -= rx; mz2 -= rz; }
     if (keys.has('Space') && P.jump === 0) { P.vy = 9; P.jump = .001; }
+    if (TOUCH && Math.hypot(joy.x, joy.y) > .15) { mx2 += fx * -joy.y + rx * joy.x; mz2 += fz * -joy.y + rz * joy.x; }
   }
+  if (TOUCH) { const show = started && !uiOpen(); if (show !== touchShown) { touchShown = show; $('#touchUI').hidden = !show; } if (show) { const b = $('#stats').getBoundingClientRect().bottom + 8; if (Math.abs(b - (P.menuTop || 0)) > 1) { P.menuTop = b; $('#tMenu').style.setProperty('--menuTop', b + 'px'); } } }
   const len = Math.hypot(mx2, mz2), gy0 = groundY(P.x, P.z), L0 = lakeAt(P.x, P.z), wet = L0 && gy0 < L0.y - .4;
   warnT -= dt;
   if (len > 0 && !binoc) {
     mx2 /= len; mz2 /= len;
-    const sp = (keys.has('ShiftLeft') || keys.has('ShiftRight') ? 19 : 10) * (wet ? .5 : 1) * (S.equip.mount === 'horse' ? 1.7 : 1);
+    const sp = (keys.has('ShiftLeft') || keys.has('ShiftRight') || runOn ? 19 : 10) * (wet ? .5 : 1) * (S.equip.mount === 'horse' ? 1.7 : 1);
     const nx = Math.max(-325, Math.min(325, P.x + mx2 * sp * dt)), nz = Math.max(-325, Math.min(325, P.z + mz2 * sp * dt));
     const ng = groundY(nx, nz), L1 = lakeAt(nx, nz), na = altOf(ng);
     let block = L1 && ng < L1.y - 2.6 ? 'deep' : null;
@@ -1620,7 +1726,8 @@ function step(dt) {
     nearI = null; let best = 1e9;
     if (!uiOpen() && !busy) W.inter.forEach(it => { const p = it.pos(), d = Math.hypot(P.x - p.x, P.z - p.z), l = it.label(); if (l && d < it.r && d < best) { best = d; nearI = it; } });
     const pr = $('#prompt');
-    if (nearI && !binoc) { pr.hidden = false; pr.innerHTML = `<kbd>E</kbd> ${nearI.label()}`; } else pr.hidden = true;
+    if (nearI && !binoc) { pr.hidden = false; pr.innerHTML = (TOUCH ? '✋ ' : '<kbd>E</kbd> ') + nearI.label(); } else pr.hidden = true;
+    if (TOUCH) $('#tAct').classList.toggle('off', !nearI || binoc);
     hudT -= dt;
     if (hudT <= 0) {
       hudT = .1;
