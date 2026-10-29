@@ -2319,6 +2319,7 @@ function loadRegion(id, atSpawn) {
   if (!def.open) { W.HG = buildTerrain(def); buildWater(def); }
   scene.fog.near = OW_ON ? 320 : 170; scene.fog.far = OW_ON ? 1750 : 560; camera.far = OW_ON ? 2800 : 1500;
   def.init();
+  if (OW_ON && !def.open) LIFE.regionStations(id);
   // нуугдмал од
   const found = S.found[id];
   def.stars.forEach(([x, z], i) => { if (found.includes(i)) return; const m = starMesh(); m.position.set(x, groundY(x, z) + 1.6, z); add(m); W.stars.push({ i, m, x, z }); });
@@ -2886,13 +2887,13 @@ const OW = (() => {
     const R3 = rng(Math.round(t.x), Math.round(t.z));
     for (let k = 0; k < n; k++) {
       const a = R3() * Math.PI * 2, r = 25 + R3() * 170 * Math.sqrt(t.s), x = t.x + Math.cos(a) * r, z = t.z + Math.sin(a) * r;
-      if (roadD(x, z)[0] < 9) continue;
+      if (roadD(x, z)[0] < 16) continue;
       const w = 6 + R3() * 8, d = 6 + R3() * 8, h = 4 + R3() * (t.s >= 2 ? 16 : 8);
       const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat(cols[k % cols.length])); m.position.set(x, ground(x, z) + h / 2, z); m.rotation.y = a; g.add(m);
       for (let f = 1; f * 3.2 < h - .5; f++) { const wb = new THREE.Mesh(new THREE.BoxGeometry(w * 1.02, .7, d * 1.02), LIT); wb.position.set(x, ground(x, z) + f * 3.2 - .6, z); wb.rotation.y = a; g.add(wb); }
       if (h < 9) { const rf = new THREE.Mesh(new THREE.ConeGeometry(Math.max(w, d) * .75, 2, 4), mat([0x2e6fb5, 0xc0392b, 0x2e8b57][k % 3])); rf.position.set(x, ground(x, z) + h + 1, z); rf.rotation.y = a + Math.PI / 4; g.add(rf); }
     }
-    for (let k = 0; k < 8; k++) { const a = R3() * 7, r = 200 * Math.sqrt(t.s) + R3() * 60, x = t.x + Math.cos(a) * r, z = t.z + Math.sin(a) * r; if (roadD(x, z)[0] < 8) continue; const w2 = new THREE.Mesh(new THREE.CylinderGeometry(3.2, 3.2, 2.2, 16), mat(0xf6f1e4)); w2.position.set(x, ground(x, z) + 1.1, z); g.add(w2); const r2 = new THREE.Mesh(new THREE.ConeGeometry(3.5, 1.6, 16), mat(0xece4d0)); r2.position.set(x, ground(x, z) + 3, z); g.add(r2); }
+    for (let k = 0; k < 8; k++) { const a = R3() * 7, r = 200 * Math.sqrt(t.s) + R3() * 60, x = t.x + Math.cos(a) * r, z = t.z + Math.sin(a) * r; if (roadD(x, z)[0] < 13) continue; const w2 = new THREE.Mesh(new THREE.CylinderGeometry(3.2, 3.2, 2.2, 16), mat(0xf6f1e4)); w2.position.set(x, ground(x, z) + 1.1, z); g.add(w2); const r2 = new THREE.Mesh(new THREE.ConeGeometry(3.5, 1.6, 16), mat(0xece4d0)); r2.position.set(x, ground(x, z) + 3, z); g.add(r2); }
     const l = label(t.a === 'сум' || t.a === 'дүүрэг' ? t.n : `${t.n} · ${t.a} аймгийн төв`, { h: 3.2, bg: 'rgba(120,40,20,.85)' }); l.position.set(t.x, ground(t.x, t.z) + 30, t.z); g.add(l);
     return shadowAll(g);
   }
@@ -3317,9 +3318,9 @@ const LIFE = (() => {
     for (const p of OW.SM) if (inC(p.x, p.z)) {
       if (!near) { const l = label(`Сумын төв · ${OW.AIMAG[OW.zoneAt(p.x, p.z)].n}`, { h: 3, bg: 'rgba(120,60,20,.85)' }); put(l, p.x, p.z, OW.ground(p.x, p.z) + 26); continue; }
       const g = new THREE.Group(), cols = [0xf0e6d2, 0xd9e4ec, 0xf3d9c4, 0xe1ead2];
-      for (let k = 0; k < 14; k++) { const a = R() * 6.28, r = 20 + R() * 110, x = p.x + Math.cos(a) * r, z = p.z + Math.sin(a) * r, w = 6 + R() * 6, h = 3.5 + R() * 4; const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, w * .8), mat(cols[k % 4])); m.position.set(x - p.x, OW.ground(x, z) - OW.ground(p.x, p.z) + h / 2, z - p.z); m.rotation.y = a; g.add(m); const wb = new THREE.Mesh(new THREE.BoxGeometry(w * 1.02, .7, w * .82), LIT); wb.position.set(m.position.x, m.position.y + .3, m.position.z); wb.rotation.y = a; g.add(wb); const rf = new THREE.Mesh(new THREE.ConeGeometry(w * .75, 1.8, 4), mat([0x2e6fb5, 0xc0392b, 0x2e8b57][k % 3])); rf.position.set(m.position.x, m.position.y + h / 2 + .9, m.position.z); rf.rotation.y = a + .785; g.add(rf); }
+      for (let k = 0; k < 14; k++) { const a = R() * 6.28, r = 20 + R() * 110, x = p.x + Math.cos(a) * r, z = p.z + Math.sin(a) * r, w = 6 + R() * 6, h = 3.5 + R() * 4; if (OW.roadD(x, z)[0] < w + 7) continue; const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, w * .8), mat(cols[k % 4])); m.position.set(x - p.x, OW.ground(x, z) - OW.ground(p.x, p.z) + h / 2, z - p.z); m.rotation.y = a; g.add(m); const wb = new THREE.Mesh(new THREE.BoxGeometry(w * 1.02, .7, w * .82), LIT); wb.position.set(m.position.x, m.position.y + .3, m.position.z); wb.rotation.y = a; g.add(wb); const rf = new THREE.Mesh(new THREE.ConeGeometry(w * .75, 1.8, 4), mat([0x2e6fb5, 0xc0392b, 0x2e8b57][k % 3])); rf.position.set(m.position.x, m.position.y + h / 2 + .9, m.position.z); rf.rotation.y = a + .785; g.add(rf); }
       const sch = new THREE.Mesh(new THREE.BoxGeometry(24, 8, 10), mat(0xf6c27a)); sch.position.set(0, OW.ground(p.x, p.z - 30) - OW.ground(p.x, p.z) + 4, -30); g.add(sch);
-      for (let k = 0; k < 6; k++) { const a = R() * 6.28, r = 140 + R() * 50, x = p.x + Math.cos(a) * r, z = p.z + Math.sin(a) * r; const gm = makeGerMesh(1); gm.position.set(x - p.x, OW.ground(x, z) - OW.ground(p.x, p.z), z - p.z); g.add(gm); }
+      for (let k = 0; k < 6; k++) { const a = R() * 6.28, r = 140 + R() * 50, x = p.x + Math.cos(a) * r, z = p.z + Math.sin(a) * r; if (OW.roadD(x, z)[0] < 12) continue; const gm = makeGerMesh(1); gm.position.set(x - p.x, OW.ground(x, z) - OW.ground(p.x, p.z), z - p.z); g.add(gm); }
       const l = label(`Сумын төв · ${OW.AIMAG[OW.zoneAt(p.x, p.z)].n}`, { h: 3, bg: 'rgba(120,60,20,.85)' }); l.position.set(0, 26, 0); g.add(l);
       put(shadowAll(g), p.x, p.z);
     }
@@ -3487,7 +3488,29 @@ const LIFE = (() => {
     if (b4 > FUEL_CAP[mk] * .15 && S.fuel[mk] <= FUEL_CAP[mk] * .15) toast('⛽ Бензин бага үлдлээ! M газрын зурагт ⛽ шатахуун түгээх газар хай.');
   }
   const empty = () => { const mk = S.equip.mount; return (mk === 'car' || mk === 'moto') && OW_ON && S.fuel[mk] <= 0; };
-  return { HERDS, init, onChunk, onDrop, onMap, inter, tickHerds, tickTraffic, dash, useFuel, empty, FUEL_CAP, STOPS, STATIONS };
+  // даалгаврын нутаг (хот) доторх шатахуун түгээх газар
+  // хотын гудамжны дагуу (төв, хойд, урд зам) колонк тавих боломжит цэгүүд: [x, z, эргэлт]
+  const CITY_ST = { ub: (() => { const L = []; for (let x = -250; x <= 250; x += 10) L.push([x, -55, 0], [x, -25, Math.PI]); for (let x = -60; x <= 185; x += 10) L.push([x, 16, 0], [x, 44, Math.PI]); for (let x = -145; x <= 65; x += 10) L.push([x, -124, 0], [x, -96, Math.PI]); for (let z = -175; z <= 115; z += 10) L.push([15, z, -Math.PI / 2], [-15, z, Math.PI / 2]); return L.sort((p, q) => Math.abs(q[0]) - Math.abs(p[0])); })() };
+  function regionStations(id) {
+    const L = CITY_ST[id]; if (!L) return;
+    const used = [];
+    for (const [x, z, rot] of L) {
+      if (used.length >= 3) break;
+      if (used.some(u => Math.hypot(u[0] - x, u[1] - z) < 140)) continue;
+      const c = Math.cos(rot), sn = Math.sin(rot), pts = [[0, 0], [-16, -4], [16, -4], [0, -10], [-20, -8], [20, -8], [-20, 4], [20, 4]].map(([dx, dz]) => [x + dx * c + dz * sn, z - dx * sn + dz * c]);
+      if (W.solid && pts.some(([px, pz]) => W.solid.some(b => px > b[0] - 3 && px < b[1] + 3 && pz > b[2] - 3 && pz < b[3] + 3))) continue;
+      const g = makeStation({}); g.rotation.y = rot; g.position.set(x, groundY(x, z), z); add(g);
+      used.push([x, z]);
+      const at = (dx, dz) => ({ x: x + dx * c + dz * sn, z: z - dx * sn + dz * c });
+      // барилгад мөргөлдөнө
+      if (W.solid) [[0, -10, 4.5, 3], [-16, -4, 4, 3], [16, -4, 4, 3]].forEach(([dx, dz, hw, hd]) => { const p = at(dx, dz); if (Math.abs(sn) > .5) [hw, hd] = [hd, hw]; W.solid.push([p.x - hw, p.x + hw, p.z - hd, p.z + hd]); });
+      W.inter.push(
+        { pos: () => at(0, 0), r: 10, label: () => { const mk = S.equip.mount; return mk === 'car' || mk === 'moto' ? `⛽ Бензин хийх · 1 ★ = 20 л (${Math.round(S.fuel[mk])}/${FUEL_CAP[mk]} л)` : '⛽ Шатахуун түгээх газар (машин, мотоцикл)'; }, act: refuel },
+        { pos: () => at(-16, -4), r: 7, label: () => '🍲 Гуанзанд хооллох', act: async () => { await say(NARR, `Гуанзанд ${pick(FOOD)} идээд амарлаа.`); } },
+        { pos: () => at(16, -4), r: 7, label: () => '🛒 Дэлгүүр', act: async () => { openPanel('shop'); } });
+    }
+  }
+  return { regionStations, HERDS, init, onChunk, onDrop, onMap, inter, tickHerds, tickTraffic, dash, useFuel, empty, FUEL_CAP, STOPS, STATIONS };
 })();
 OW_HOOK.chunk = LIFE.onChunk; OW_HOOK.drop = LIFE.onDrop; OW_HOOK.map = LIFE.onMap;
 // HUD-ын жижиг газрын зураг
