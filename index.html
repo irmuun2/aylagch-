@@ -338,7 +338,7 @@ html.touch .big{padding:10px 20px;font-size:16px}
       <h3 class="t">Хаашаа аялах вэ?</h3>
       <button class="closeBtn" id="tClose">Хаах <kbd>T</kbd></button>
     </div>
-    <div style="color:var(--muted);font-size:14px;margin-top:2px">Монгол орны газрын зураг дээрээс аялах нутгаа сонго. Нэг нутгийн бүх даалгаврыг биелүүлбэл дараагийнх нь нээгдэнэ.</div>
+    <div style="color:var(--muted);font-size:14px;margin-top:2px">Монгол орны газрын зураг дээрээс хүссэн газраа сонгоод шууд оч, эсвэл замаар газар үзэж аялаарай. Нутгийн захаар гараад ч хөрш газар руу явж болно.</div>
     <svg id="tMap" viewBox="0 0 680 350" role="img" aria-label="Монгол орны газрын зураг"></svg>
     <div id="tInfo"></div>
   </div>
@@ -1843,14 +1843,15 @@ REGIONS.ub = (() => {
 // Хоёр нутгийн хоорондох зай = газрын зураг дээрх шулуун зай (сурах бичгийн баримт биш, тоглоомын тооцоо)
 const gcKm = (a, b) => { const R = 6371, r = d => d * Math.PI / 180; const dφ = r(b.lat - a.lat), dλ = r(b.lon - a.lon); const h = Math.sin(dφ / 2) ** 2 + Math.cos(r(a.lat)) * Math.cos(r(b.lat)) * Math.sin(dλ / 2) ** 2; return Math.round(2 * R * Math.asin(Math.sqrt(h)) / 10) * 10; };
 // Аль нутгаас аль зүгт аль нутаг байх (газар зүйн байршлаар)
-const EDGES = { hangai: { e: 'ub', n: 'khuvsgul', s: 'gobi' }, ub: { w: 'hangai', s: 'gobi' }, gobi: { n: 'hangai', e: 'ub' }, khuvsgul: { s: 'hangai' } };
+const EDGES = { hangai: { e: 'ub', n: 'khuvsgul', s: 'gobi' }, ub: { w: 'hangai', s: 'gobi', n: 'khuvsgul' }, gobi: { n: 'hangai', e: 'ub', w: 'hangai' }, khuvsgul: { s: 'hangai', e: 'ub' } };
 const SIDE_D = { n: [0, -1], s: [0, 1], e: [1, 0], w: [-1, 0] };
 const SIDE_NAME = { n: 'хойд', s: 'өмнөд', e: 'зүүн', w: 'баруун' };
 const GEN = { hangai: 'Хангайн хөндийн', gobi: 'Говийн', khuvsgul: 'Хөвсгөлийн тайгын', ub: 'Улаанбаатар хотын' }, DAT = { hangai: 'Хангайн хөндийд', gobi: 'Говьд', khuvsgul: 'Хөвсгөлийн тайгад', ub: 'Улаанбаатар хотод' };
-const linkSide = (from, to) => { const e = EDGES[from] || {}; return Object.keys(e).find(k => e[k] === to) || null; };
+// хилээр холбоогүй хос бол газрын зураг дээрх байршлаар зүгийг сонгоно
+const linkSide = (from, to) => { if (!REGIONS[from] || !REGIONS[to] || from === to || from === 'road') return null; const e = EDGES[from] || {}; const k = Object.keys(e).find(k2 => e[k2] === to); if (k) return k; const a = REGIONS[from], b = REGIONS[to], dx = (b.lon - a.lon) * Math.cos(a.lat * Math.PI / 180), dy = b.lat - a.lat; return Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'e' : 'w') : (dy > 0 ? 'n' : 's'); };
 const linkKm = (from, to) => gcKm(REGIONS[from], REGIONS[to]);
 const ROAD_KM = linkKm('hangai', 'ub');
-const LINKS = [['hangai', 'ub'], ['hangai', 'khuvsgul'], ['hangai', 'gobi'], ['ub', 'gobi']];
+const LINKS = [['hangai', 'ub'], ['hangai', 'khuvsgul'], ['hangai', 'gobi'], ['ub', 'gobi'], ['ub', 'khuvsgul']];
 // өдөрт туулах зай (тоглоомын ойролцоо тооцоо)
 const KPD = { none: ['Явган', 40], horse: ['Морьтой', 60], moto: ['Мотоциклоор', 250], car: ['Машинаар', 450] };
 const kpd = () => KPD[S.equip.mount] || KPD.none;
@@ -1962,8 +1963,8 @@ REGIONS.road = (() => {
   }
   return def;
 })();
-function startRoad(to) {
-  const from = S.region, side = linkSide(from, to); if (!side) return;
+function startRoad(to, viaSide) {
+  const from = S.region, side = viaSide || linkSide(from, to); if (!side) return;
   const D = SIDE_D[side];
   S.trip = { from, to, side, km: linkKm(from, to), maxKm: 0, nights: 0, start: dayClock };
   REGIONS.road.spawn = { x: -D[0] * 308, z: -D[1] * 308 };
@@ -1980,7 +1981,7 @@ function edgeExit(side) {
   const push = () => { P.x = Math.max(-316, Math.min(316, P.x)); P.z = Math.max(-316, Math.min(316, P.z)); };
   if (!to) { push(); if (edgeT <= 0) { edgeT = 3; toast(`${GEN[S.region] || W.def.name} ${SIDE_NAME[side]} хил. Энэ зүгт өөр нутаг алга. T дарж газрын зургаас аялаарай.`); } return; }
   if (!unlocked(to)) { push(); if (edgeT <= 0) { edgeT = 3; toast(`${REGIONS[to].name} хараахан нээгдээгүй. ${GEN[REQ[to]]} даалгавруудыг дуусгаарай.`); } return; }
-  startRoad(to);
+  startRoad(to, side);
 }
 
 const ORDER = ['hangai', 'gobi', 'khuvsgul', 'ub'];
@@ -2018,7 +2019,8 @@ const cam = { yaw: 0, pitch: .38, dist: 13 };
 function save() { try { if (W) { S.pos = { x: P.x, z: P.z }; S.yaw = cam.yaw; } localStorage.setItem(SAVE_KEY, JSON.stringify(S)); } catch (e) {} }
 function loadSave() { try { const s = JSON.parse(localStorage.getItem(SAVE_KEY)); return s && s.reg ? s : null; } catch (e) { return null; } }
 const regionDone = id => S.reg[id].q >= REGIONS[id].quests.length;
-const unlocked = id => !REQ[id] || regionDone(REQ[id]);
+// Бүх газар нээлттэй: хаашаа ч чөлөөтэй аялна
+const unlocked = id => true;
 
 /* ================= ӨДӨР, ШӨНӨ ================= */
 // Нэг хоног тоглоомд 4 минут. Дэлхий тэнхлэгээ эргэдэг учраас өдөр шөнө солигддог (7-р анги 2.2).
@@ -2350,7 +2352,7 @@ function renderTravel() {
   $('#tClose').hidden = tFirst;
 }
 function selRegion(id) { tSel = id; renderTravel(); }
-const roadOk = id => unlocked(id) && S.region !== 'road' && !!linkSide(S.region, id);
+const roadOk = id => S.region !== 'road' && !!linkSide(S.region, id);
 function goRegion(id) {
   if (!unlocked(id)) return;
   if (!(S.region === id && W)) { loadRegion(id, true); toast(`${REGIONS[id].name} руу аяллаа! Толгой дээрээ «!» тэмдэгтэй хүнтэй ярь.`); }
