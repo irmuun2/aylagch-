@@ -1821,6 +1821,107 @@ REGIONS.ub = (() => {
   return def;
 })();
 
+
+/* ---------- ЗАМ: ХАНГАЙ ↔ УЛААНБААТАР ---------- */
+// Газрын зураг дээрх хоёр цэгийн шулуун зай (сурах бичгийн баримт биш, тоглоомын тооцоо)
+const ROAD_KM = (() => { const a = REGIONS.hangai, b = REGIONS.ub, R = 6371, r = d => d * Math.PI / 180; const dφ = r(b.lat - a.lat), dλ = r(b.lon - a.lon); const h = Math.sin(dφ / 2) ** 2 + Math.cos(r(a.lat)) * Math.cos(r(b.lat)) * Math.sin(dλ / 2) ** 2; return Math.round(2 * R * Math.asin(Math.sqrt(h)) / 10) * 10; })();
+// өдөрт туулах зай (тоглоомын ойролцоо тооцоо)
+const KPD = { none: ['Явган', 40], horse: ['Морьтой', 60], moto: ['Мотоциклоор', 250], car: ['Машинаар', 450] };
+const kpd = () => KPD[S.equip.mount] || KPD.none;
+REGIONS.road = (() => {
+  const KM = ROAD_KM, kmAt = x => Math.max(0, Math.min(KM, (x + 320) / 640 * KM));
+  const def = {
+    id: 'road', name: 'Хангай ↔ Улаанбаатар зам', lon: 103.6, lat: 47.6, baseAlt: 1300, sky: 0xa5d2f0, ground: 0x7a8f52,
+    desc: '', topics: [], camp: { x: 0, z: 4 }, spawn: { x: -308, z: 3 }, contour: 5, lakes: [], rivers: [],
+    stars: [[-200, -60], [-40, 70], [90, -90], [230, 60]],
+    quests: [],
+    H(x, z) {
+      let h = 1.2*Math.sin(x*.015)*Math.cos(z*.02) + .6*Math.sin(x*.04 + 1)*Math.sin(z*.05);
+      const w = smooth(-110, -300, x); h += w * (20*g2(x,z,-250,-150,70) + 24*g2(x,z,-220,170,65) + 12*g2(x,z,-300,60,45) + 10*g2(x,z,-170,-60,40));
+      h += 6*g2(x,z,40,-150,60) + 5*g2(x,z,-20,160,55) + 4*g2(x,z,120,130,50);
+      const e = smooth(150, 320, x); h += e * (12*g2(x,z,270,-170,60) + 10*g2(x,z,260,170,60));
+      const rw = Math.exp(-z*z/(2*14*14)); return h * (1 - .92*rw);
+    },
+    color(x, z, h) {
+      if (h > 14) return mix(0x5c7f45, 0x8d8273, (h - 14) / 12);
+      if (h > 6 && x < -100) return cA.set(0x4f7a3c);
+      return mix(0x86a957, 0xb9b46c, (x + 320) / 640);
+    },
+    objective: () => [], needsTalk: () => false, target: () => null, talk: {},
+  };
+  let cars = [], arrived = false, panelT = 0;
+  def.init = () => {
+    if (!S.trip) S.trip = { to: 'ub', dir: 1, maxKm: 0, nights: 0, start: dayClock };
+    const T = S.trip; arrived = false;
+    // зам
+    const v = [], idx = []; let i = 0;
+    for (let x = -332; x <= 332; x += 4, i++) { const y = groundY(x, 0) + .08; v.push(x, y, -2.4, x, y, 2.4); if (x < 332) { const a = i * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); } }
+    const rg = new THREE.BufferGeometry(); rg.setAttribute('position', new THREE.Float32BufferAttribute(v, 3)); rg.setIndex(idx); rg.computeVertexNormals();
+    const road = new THREE.Mesh(rg, mat(0x3b3f45, { flatShading: false, side: THREE.DoubleSide })); road.receiveShadow = true; add(road);
+    const dash = new THREE.InstancedMesh(new THREE.BoxGeometry(2.4, .04, .18), mat(0xf4f2ee), 84), o = new THREE.Object3D(); let n = 0;
+    for (let x = -330; x <= 330 && n < 84; x += 8) { o.position.set(x, groundY(x, 0) + .12, 0); o.updateMatrix(); dash.setMatrixAt(n++, o.matrix); }
+    dash.count = n; add(dash);
+    // км-ийн тэмдэг (50 км тутам)
+    const dest = T.dir > 0 ? 'Улаанбаатар' : 'Хангай';
+    for (let k = 50; k < KM; k += 50) {
+      const x = k / KM * 640 - 320, left = T.dir > 0 ? KM - k : k, y = groundY(x, -5);
+      const p = new THREE.Mesh(new THREE.BoxGeometry(.15, 2.2, .15), mat(0xdddddd)); p.position.set(x, y + 1.1, -5); add(p);
+      const l = label(dest + ' ' + left + ' км', { h: 1, bg: 'rgba(32,120,70,.92)' }); l.position.set(x, y + 2.8, -5); add(l);
+    }
+    const end = (x, text) => { const l = label(text, { h: 1.6, bg: 'rgba(18,28,40,.9)' }); l.position.set(x, groundY(x, 7) + 4, 7); add(l); };
+    end(-318, '🏕 Хангайн хөндий'); end(318, '🏙 Улаанбаатар');
+    // сумын төвүүд
+    const town = (cx, cz) => {
+      for (let k = 0; k < 6; k++) { const x = cx + (k % 3) * 9 - 9, z = cz + Math.floor(k / 3) * 9 * Math.sign(cz); const y = groundY(x, z); const b = new THREE.Mesh(new THREE.BoxGeometry(5, 3, 4), mat([0xe8e2d0, 0xd8c7a6, 0xc9d6e0][k % 3])); b.position.set(x, y + 1.5, z); add(shadowAll(b)); const r = new THREE.Mesh(new THREE.ConeGeometry(3.7, 1.6, 4), mat([0xc0392b, 0x2e86de, 0x27ae60][k % 3])); r.rotation.y = Math.PI / 4; r.position.set(x, y + 3.8, z); add(shadowAll(r)); }
+      for (let k = 0; k < 5; k++) makeGer(cx + 22 + k * 7, cz + Math.sign(cz) * (k % 2) * 7, .7);
+      const l = label('Сумын төв', { h: 1.3 }); l.position.set(cx, groundY(cx, cz) + 7, cz); add(l);
+    };
+    town(-110, -22); town(130, 24);
+    { const x = 10, z = -14, y = groundY(x, z); const st = new THREE.Mesh(new THREE.BoxGeometry(8, 3, 5), mat(0xf1c40f)); st.position.set(x, y + 1.5, z); add(shadowAll(st)); const rf = new THREE.Mesh(new THREE.BoxGeometry(12, .4, 8), mat(0xc0392b)); rf.position.set(x, y + 4.2, z + 4); add(rf); const l = label('Шатахуун түгээх станц', { h: 1 }); l.position.set(x, y + 6, z); add(l); }
+    // ой (Хангайн уулс), хонин сүрэг
+    const spots = []; for (let t = 0; t < 5000 && spots.length < 300 * QUALITY; t++) { const x = -330 + rnd() * 240, z = -330 + rnd() * 660, h = groundY(x, z); if (h > 5 && Math.abs(z) > 14) spots.push([x, h, z, .8 + rnd() * .7]); }
+    instTrees(spots);
+    [[60, 48], [-40, -66], [200, -40]].forEach(([cx, cz]) => { for (let k = 0; k < 7; k++) { const g = makeSheep(), x = cx + (rnd() - .5) * 14, z = cz + (rnd() - .5) * 10; g.position.set(x, groundY(x, z), z); g.rotation.y = rnd() * 6; add(g); } });
+    // замын хөдөлгөөн
+    cars = [];
+    const CC = [0xc0392b, 0x2980b9, 0xecf0f1, 0x27ae60, 0x34495e, 0xe67e22];
+    for (let k = 0; k < Math.round(6 * QUALITY + 2); k++) { const g = new THREE.Group(); const b = new THREE.Mesh(new THREE.BoxGeometry(2, 1, 4), mat(CC[k % CC.length])); b.position.y = .8; g.add(b); const tp = new THREE.Mesh(new THREE.BoxGeometry(1.8, .8, 2.2), mat(0x9fd4f5, { transparent: true, opacity: .8 })); tp.position.y = 1.6; g.add(tp); add(shadowAll(g)); cars.push({ g, lane: k % 2 ? -1.2 : 1.2, dir: k % 2 ? -1 : 1, off: k * 97, sp: 14 + (k % 3) * 3 }); }
+    W.tick = (dt, t) => {
+      cars.forEach(c => { const x = ((c.off + t * c.sp * c.dir) % 660 + 990) % 660 - 330; c.g.position.set(x, groundY(x, c.lane), c.lane); c.g.rotation.y = c.dir > 0 ? Math.PI / 2 : -Math.PI / 2; });
+      const T = S.trip; if (!T) return;
+      const km = T.dir > 0 ? kmAt(P.x) : KM - kmAt(P.x);
+      if (km > T.maxKm) { dayClock += (km - T.maxKm) / kpd()[1] * DAY_LEN; T.maxKm = km; }
+      panelT -= dt; if (panelT <= 0) { panelT = .3; renderQuest(); }
+      if (!arrived && !busy && (T.dir > 0 ? P.x > 312 : P.x < -312)) { arrived = true; run(arriveRoad); }
+    };
+    W.marks = () => [{ x: -300, z: 20, t: 'text', s: 'Хангайн хөндий', c: '#1f4d2b' }, { x: 290, z: 20, t: 'text', s: 'Улаанбаатар', c: '#0d3a66' }, { x: -110, z: -40, t: 'text', s: 'Сумын төв' }, { x: 130, z: 44, t: 'text', s: 'Сумын төв' }];
+  };
+  def.panel = () => {
+    const T = S.trip; if (!T) return '';
+    const km = Math.round(T.maxKm), days = Math.max(0, (dayClock - T.start) / DAY_LEN), [mode, per] = kpd(), eta = Math.max(0, (KM - km) / per);
+    return `<div class="topic">Аялал · ${T.dir > 0 ? 'Хангай → Улаанбаатар' : 'Улаанбаатар → Хангай'}</div><h2>${km} / ${KM} км</h2>
+      <div class="prog"><i class="on" style="flex:${Math.max(1, km)}"></i><i style="flex:${Math.max(1, KM - km)}"></i></div>
+      <ul style="margin-top:8px"><li>${mode}: өдөрт ≈${per} км</li><li>${Math.floor(days) + 1}-р өдөр · ${T.nights} шөнө хоносон</li><li>Хүрэх хүртэл ≈${eta < 1 ? 'өнөөдөр' : fmt1(eta) + ' өдөр'}</li></ul>`;
+  };
+  async function arriveRoad() {
+    const T = S.trip, days = (dayClock - T.start) / DAY_LEN, to = T.to;
+    await say(NARR, `${to === 'ub' ? 'Улаанбаатар хотод' : 'Хангайн хөндийд'} хүрлээ! Та <b>${ROAD_KM} км</b> замыг <b>${fmt1(Math.max(days, .1))} өдөрт</b> туулж, замдаа <b>${T.nights} шөнө</b> хоноглолоо. <span style="color:var(--muted)">(Зай нь газрын зураг дээрх шулуун зай, хурд нь тоглоомын ойролцоо тооцоо.)</span>`);
+    loadRegion(to, true);
+    if (to === 'ub') { P.x = -250; P.z = -40; cam.yaw = P.face = Math.PI / 2; }
+    toast(REGIONS[to].name + ' руу ирлээ!');
+  }
+  return def;
+})();
+function startRoad(to) {
+  const dir = to === 'ub' ? 1 : -1;
+  S.trip = { to, dir, maxKm: 0, nights: 0, start: dayClock };
+  REGIONS.road.spawn = dir > 0 ? { x: -308, z: 3 } : { x: 308, z: 3 };
+  loadRegion('road', true);
+  cam.yaw = P.face = dir > 0 ? Math.PI / 2 : -Math.PI / 2;
+  tFirst = false; closePanel('travel');
+  const [mode, per] = kpd();
+  toast(`🛣 ${ROAD_KM} км аялал эхэллээ! ${mode} өдөрт ≈${per} км явна.`);
+}
 const ORDER = ['hangai', 'gobi', 'khuvsgul', 'ub'];
 // аль нутгийг дуусгавал нээгдэх вэ
 const REQ = { gobi: 'hangai', khuvsgul: 'gobi', ub: 'hangai' };
@@ -1884,7 +1985,7 @@ function dayNight(dt) {
   starsSky.material.opacity = n; starsSky.position.copy(camera.position);
   moon.material.opacity = n; moon.position.set(camera.position.x - 260, camera.position.y + 300 * Math.max(.25, -el) + 60, camera.position.z - 380);
   if (started && S.region) {
-    if (n > .6 && !nightOn) { nightOn = true; toast('🌙 Шөнө боллоо. Дэлхий тэнхлэгээ эргэдэг учраас өдөр шөнө солигддог.'); }
+    if (n > .6 && !nightOn) { nightOn = true; if (S.trip && S.region === 'road') { S.trip.nights++; toast('🌙 ' + S.trip.nights + '-р шөнө. Замдаа хоноглолоо.'); } else toast('🌙 Шөнө боллоо. Дэлхий тэнхлэгээ эргэдэг учраас өдөр шөнө солигддог.'); }
     if (n < .3 && nightOn) { nightOn = false; toast('☀ Өглөө боллоо! Дэлхий тэнхлэгээ ≈ 24 цагт нэг эргэнэ. Энэ бол нэг хоног.'); }
     const lab = n > .6 ? '🌙 Шөнө' : dusk > .4 ? (Math.cos(ph * Math.PI * 2) > 0 ? '🌅 Өглөө' : '🌇 Орой') : '☀ Өдөр';
     if ($('#sDay').textContent !== lab) $('#sDay').textContent = lab;
@@ -1953,8 +2054,10 @@ function loadRegion(id, atSpawn) {
   world.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) { (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => { if (m.map) m.map.dispose(); m.dispose(); }); } });
   world = new THREE.Group(); scene.add(world);
   S.region = id;
+  if (id !== 'road') S.trip = null;
+  S.reg[id] = S.reg[id] || freshReg(); S.found[id] = S.found[id] || [];
   const def = REGIONS[id];
-  seed = 7 + ORDER.indexOf(id) * 1000;
+  const oi = ORDER.indexOf(id); seed = 7 + (oi < 0 ? 9 : oi) * 1000;
   W = { def, solid: null, npc: {}, inter: [], talk: def.talk, tick: () => {}, marks: () => [], distFrom: () => null, mapOpened: () => {}, mapBase: null, stars: [] };
   W.HG = buildTerrain(def);
   buildWater(def);
@@ -1991,6 +2094,7 @@ $('#quest').addEventListener('click', () => $('#quest').classList.remove('open')
 function renderQuest() {
   if (!W || !S.region) return;
   const def = W.def, R = reg(), el = $('#quest');
+  if (def.panel) { el.innerHTML = def.panel(); $('#qProg').textContent = '🛣'; renderStats(); return; }
   const prog = def.quests.map((_, i) => `<i class="${i < R.q ? 'on' : ''}"></i>`).join('');
   if (R.q >= def.quests.length) el.innerHTML = `<div class="topic">${def.name}</div><h2>Бүх даалгавар биеллээ</h2><ul><li class="${ORDER.every(regionDone) ? 'done' : ''}">${ORDER.every(regionDone) ? 'Бүх нутгаар аялж дууслаа!' : '<kbd>T</kbd> дарж дараагийн нутгаа сонго'}</li></ul><div class="prog">${prog}</div>`;
   else { const Q = def.quests[R.q]; el.innerHTML = `<div class="topic">${def.name} · ${R.q + 1}/${def.quests.length} · ${Q.topic}</div><h2>${Q.title}</h2><ul>${def.objective(R).map(o => `<li class="${o.done ? 'done' : o.need ? 'need' : ''}">${tt(o.t)}</li>`).join('')}</ul><div class="prog">${prog}</div>`; }
@@ -2167,6 +2271,7 @@ function renderTravel() {
   let s = `<defs><linearGradient id="mg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5f8f4e"/><stop offset=".55" stop-color="#a7b56a"/><stop offset="1" stop-color="#d9c08a"/></linearGradient></defs>`;
   s += `<rect x="0" y="0" width="680" height="350" rx="14" fill="#1b2b3a"/>`;
   s += `<path d="${outline}" fill="url(#mg)" stroke="#f3ead2" stroke-width="3" stroke-linejoin="round"/>`;
+  { const a = REGIONS.hangai, b = REGIONS.ub; s += `<path d="M${mx(a.lon)} ${my(a.lat)} Q${(mx(a.lon) + mx(b.lon)) / 2} ${my((a.lat + b.lat) / 2) - 18} ${mx(b.lon)} ${my(b.lat)}" fill="none" stroke="#3b3f45" stroke-width="5" stroke-linecap="round"/><path d="M${mx(a.lon)} ${my(a.lat)} Q${(mx(a.lon) + mx(b.lon)) / 2} ${my((a.lat + b.lat) / 2) - 18} ${mx(b.lon)} ${my(b.lat)}" fill="none" stroke="#f4f2ee" stroke-width="1.5" stroke-dasharray="6 6"/><text x="${(mx(a.lon) + mx(b.lon)) / 2}" y="${my((a.lat + b.lat) / 2) - 18}" text-anchor="middle" font-family="Nunito, sans-serif" font-weight="900" font-size="13" fill="#1b2b3a" stroke="#f3ead2" stroke-width="3" paint-order="stroke">≈${ROAD_KM} км</text>`; }
   s += `<g font-family="Nunito, sans-serif" font-weight="800">`;
   ORDER.forEach((id, k) => {
     const def = REGIONS[id], x = mx(def.lon), y = my(def.lat), lockd = !unlocked(id), done = regionDone(id), R = S.reg[id];
@@ -2179,18 +2284,19 @@ function renderTravel() {
   svg.innerHTML = s;
   const id = tSel, def = id && REGIONS[id];
   $('#tInfo').innerHTML = def ? `<div><h4>${def.name}</h4><p>${def.desc}</p><div class="topics">${def.topics.map(t => `<span>${t}</span>`).join('')}</div></div>
-    <button class="big" id="tGo" ${unlocked(id) ? '' : 'disabled'}>${!unlocked(id) ? 'Түгжээтэй' : S.region === id && W ? 'Энд байна' : 'Аялах'}</button>` + (!unlocked(id) ? `<p style="grid-column:1/-1">${REGIONS[REQ[id]].name}-ийн бүх даалгаврыг биелүүлбэл нээгдэнэ.</p>` : '')
+    <div style="display:grid;gap:8px"><button class="big" id="tGo" ${unlocked(id) ? '' : 'disabled'}>${!unlocked(id) ? 'Түгжээтэй' : S.region === id && W ? 'Энд байна' : 'Шууд очих'}</button>${roadOk(id) ? `<button class="big ghost" id="tRoad">🛣️ Замаар явах · ≈${ROAD_KM} км</button>` : ''}</div>` + (roadOk(id) ? `<p style="grid-column:1/-1;font-size:13px">Замаар явбал явсан км-ээр өдөр, шөнө солигдоно: явган ≈${Math.round(ROAD_KM / 40)}, морьтой ≈${Math.round(ROAD_KM / 60)}, мотоциклоор ≈${fmt1(ROAD_KM / 250)}, машинаар ≈${fmt1(ROAD_KM / 450)} өдөр.</p>` : '') + (!unlocked(id) ? `<p style="grid-column:1/-1">${REGIONS[REQ[id]].name}-ийн бүх даалгаврыг биелүүлбэл нээгдэнэ.</p>` : '')
     : `<p>Газрын зураг дээрх цэгийг (эсвэл <kbd>1</kbd>–<kbd>3</kbd>) дарж нутгаа сонго.</p>`;
   $('#tClose').hidden = tFirst;
 }
 function selRegion(id) { tSel = id; renderTravel(); }
+const roadOk = id => unlocked(id) && ((S.region === 'hangai' && id === 'ub') || (S.region === 'ub' && id === 'hangai') || (S.region === 'road' && (id === 'ub' || id === 'hangai')));
 function goRegion(id) {
   if (!unlocked(id)) return;
   if (!(S.region === id && W)) { loadRegion(id, true); toast(`${REGIONS[id].name} руу аяллаа! Толгой дээрээ «!» тэмдэгтэй хүнтэй ярь.`); }
   tFirst = false; closePanel('travel');
 }
 $('#tMap').addEventListener('click', e => { const g = e.target.closest('[data-reg]'); if (g) selRegion(g.dataset.reg); });
-$('#tInfo').addEventListener('click', e => { if (e.target.closest('#tGo')) goRegion(tSel); });
+$('#tInfo').addEventListener('click', e => { if (e.target.closest('#tGo')) goRegion(tSel); if (e.target.closest('#tRoad')) startRoad(tSel); });
 $('#tClose').onclick = () => closePanel('travel');
 
 /* ================= САМБАРУУД ================= */
